@@ -28,5 +28,8 @@ dev-dependencies = [
     "watchdog>=3.0.0",
 ]
 
+[tool.rye.scripts]
+app = "streamlit run src/market_watch/Market_Watch.py"
+
 [tool.hatch.metadata]
 allow-direct-references = true
