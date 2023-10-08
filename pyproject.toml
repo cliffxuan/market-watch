@@ -1,0 +1,32 @@
+[project]
+name = "market-watch"
+version = "0.1.0"
+description = "Watch the market"
+authors = [
+    { name = "Cliff Xuan", email = "cliff.xuan@gmail.com" }
+]
+dependencies = [
+    "streamlit>=1.27.2",
+    "yfinance>=0.2.31",
+    "pandas>=2.0.3",
+    "PyPortfolioOpt>=1.5.5",
+    "matplotlib>=3.7.3",
+    "plotly>=5.17.0",
+    "streamlit-aggrid>=0.3.4.post3",
+]
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "black>=23.9.1",
+    "watchdog>=3.0.0",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
