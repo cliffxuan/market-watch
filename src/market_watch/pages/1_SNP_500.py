@@ -48,6 +48,7 @@ def main():
     aggrid = AgGrid(
         constituents,
         options,
+        enable_enterprise_modules=False,
         columns_auto_size_mode=ColumnsAutoSizeMode.FIT_ALL_COLUMNS_TO_VIEW,
         enable_quicksearch=True,
     )
