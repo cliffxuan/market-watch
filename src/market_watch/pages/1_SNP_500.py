@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
 
-from market_watch.utils import DATA_DIR, data, set_page_config_once
+from market_watch.utils import DATA_DIR, display_tickers, set_page_config_once
 
 
 def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
@@ -53,7 +53,7 @@ def main():
         enable_quicksearch=True,
     )
     if aggrid.selected_rows:
-        data([row["Symbol"] for row in aggrid.selected_rows])
+        display_tickers([row["Symbol"] for row in aggrid.selected_rows])
 
 
 if __name__ == "__main__":

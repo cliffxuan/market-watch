@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from string import Template
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -89,7 +88,7 @@ def get_hist(ticker: str) -> pd.DataFrame:
     return yf.Ticker(ticker).history(period="5y")
 
 
-def data(names):
+def display_tickers(names):
     df = pd.DataFrame({"LocalDate": []}).set_index("LocalDate")
     ticker_tabs = st.tabs(names)
     for i, name in enumerate(names):
