@@ -88,6 +88,11 @@ def get_hist(ticker: str) -> pd.DataFrame:
     return yf.Ticker(ticker).history(period="5y")
 
 
+@st.cache_data
+def get_hists() -> pd.DataFrame:
+    return pd.read_parquet(DATA_DIR / "spx_hist.parquet")
+
+
 def display_tickers(names):
     df = pd.DataFrame({"LocalDate": []}).set_index("LocalDate")
     ticker_tabs = st.tabs(names)
@@ -113,9 +118,10 @@ def display_tickers(names):
                 st.line_chart(hist.Volume)
             with info_tabs[2]:
                 trading_view(name, info["exchange"])
+    st.markdown("closing prices")
     st.dataframe(df)
     mu = expected_returns.mean_historical_return(df)
-    st.text("expected return")
+    st.markdown("expected returns")
     st.dataframe(mu)
     S = risk_models.sample_cov(df)
     ef = EfficientFrontier(mu, S)
