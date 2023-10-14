@@ -118,8 +118,13 @@ def display_tickers(names):
                 st.line_chart(hist.Volume)
             with info_tabs[2]:
                 trading_view(name, info["exchange"])
-    st.markdown("closing prices")
-    st.dataframe(df)
+    price_tabs = st.tabs(["closing prices", "returns data", "returns chart"])
+    with price_tabs[0]:
+        st.dataframe(df)
+    with price_tabs[1]:
+        st.dataframe((df.pct_change() + 1).cumprod())
+    with price_tabs[2]:
+        st.line_chart((df.pct_change() + 1).cumprod())
     mu = expected_returns.mean_historical_return(df)
     st.markdown("expected returns")
     st.dataframe(mu)
