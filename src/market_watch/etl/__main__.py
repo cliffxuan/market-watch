@@ -10,17 +10,35 @@ from github import Auth, Github
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent.parent.parent / "data"
 SPX_HIST = "spx_hist.parquet"
+SPX_INFO = "spx_info.parquet"
 
 
-def get_hists(local: bool = True) -> pd.DataFrame:
+def get_tickers(local: bool = True) -> list[str]:
     if local:
         constituents = pd.read_csv(DATA_DIR / "spx_constituents.csv")
     else:
         constituents = pd.read_csv(
             "https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/spx_constituents.csv"
         )
-    tickers = constituents["Symbol"].sort_values().to_list()
-    return yf.Tickers(tickers).history()
+    return constituents["Symbol"].sort_values().to_list()
+
+
+def get_hists(local: bool = True) -> pd.DataFrame:
+    return yf.Tickers(get_tickers(local)).history()
+
+
+def get_info(local: bool = True) -> pd.DataFrame:
+    info = {}
+    tickers = get_tickers(local)
+    for i, ticker in enumerate(tickers):
+        print(
+            f"{str(i).zfill(len(str(len(tickers))))} / {len(tickers)} {ticker}",
+            end="\r",
+        )
+        info[ticker] = yf.Ticker(ticker).info
+    return pd.DataFrame.from_dict(info, orient="index").sort_values(
+        by="marketCap", ascending=False
+    )
 
 
 def commit(file_path: Path, message: str = ""):
@@ -54,11 +72,15 @@ def handler(pd: "pipedream"):  # type: ignore  # noqa
 
 
 def main():
-    df = get_hists()
-    file_path = DATA_DIR / SPX_HIST
-    print(f"write file to {file_path}")
-    df.to_parquet(file_path, compression="gzip")
-    commit(file_path)
+    hist_file_path = DATA_DIR / SPX_HIST
+    print(f"get hist data and write to {hist_file_path}")
+    get_hists().to_parquet(hist_file_path, compression="gzip")
+    commit(hist_file_path)
+
+    info_file_path = DATA_DIR / SPX_INFO
+    print(f"get info data and write to {info_file_path}")
+    get_info().to_parquet(info_file_path, compression="gzip")
+    commit(info_file_path)
 
 
 if __name__ == "__main__":

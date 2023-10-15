@@ -1,5 +1,3 @@
-import json
-
 import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
@@ -25,22 +23,19 @@ def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
 def main():
     st.markdown("# S&P 500")
     constituents = pd.read_csv(DATA_DIR / "spx_constituents.csv")
-    market_caps = []
-    exchanges = []
-    for symbol in constituents["Symbol"]:
-        with open(DATA_DIR / "tickers" / f"{symbol}.json", "r") as f:
-            info = json.loads(f.read())
-            market_cap = info.get("marketCap", 0)
-            market_caps.append(market_cap)
-            exchange = info.get("exchange", "")
-            exchanges.append(exchange)
-    constituents.insert(2, "Market Cap", pd.Series(market_caps))
-    constituents["Exchange"] = pd.Series(exchanges)
+    info = pd.read_parquet(DATA_DIR / "spx_info.parquet")
+    constituents = constituents.join(
+        info[["marketCap", "exchange"]].rename(
+            columns={"marketCap": "Market Cap", "exchange": "Exchange"}
+        ),
+        on="Symbol",
+    )
     close = get_hists()["Close"]
     constituents = constituents.join(
         (close.iloc[-1] / close.iloc[-2] * 100 - 100).round(2).to_frame("1d %"),
         on="Symbol",
     )
+    constituents.insert(2, "Market Cap", constituents.pop("Market Cap"))
     constituents.insert(3, "1d %", constituents.pop("1d %"))
     constituents = constituents.join(
         (close.iloc[-1] / close.iloc[-6] * 100 - 100).round(2).to_frame("7d %"),
