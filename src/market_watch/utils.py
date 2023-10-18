@@ -88,7 +88,7 @@ def get_hist(ticker: str) -> pd.DataFrame:
     return yf.Ticker(ticker).history(period="5y")
 
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def get_hists() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "spx_hist.parquet")
 
