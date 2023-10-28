@@ -26,36 +26,43 @@ def set_page_config_once():
         return
 
 
-def trading_view(name: str, exchange: str):
+def trading_view(
+    name: str,
+    exchange: str,
+    height: int = 600,
+    hide_side_toolbar: bool = False,
+    interval: str = "W",
+    style: int = 1,
+):
     exchange_mapping = {
         "NMS": "NASDAQ",
         "NYQ": "NYSE",
         "NGM": "NASDAQ",  # Enphase
         "BTS": "AMEX",  # CBOE
     }
-    exchange_long = exchange_mapping[exchange]
+    exchange_long = exchange_mapping.get(exchange, exchange)
     name = name.upper().replace("-", ".")  # e.g. BRK-B
     symbol = f"{exchange_long}:{name}"
     chart = """
     <!-- TradingView Widget BEGIN -->
     <div class="tradingview-widget-container">
       <div id="tradingview_27074"></div>
-      <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/chart/?symbol=$symbol" rel="noopener nofollow" target="_blank"><span class="blue-text">Open in TradingView</span></a></div>
+      <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/chart/?symbol=$symbol" rel="noopener nofollow" target="_blank"><span class="blue-text">$symbol</span></a></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
          new TradingView.widget(
           {
               "width": "100%",
-              "height": 932,
+              "height": $height,
               "symbol": "$symbol",
-              "interval": "W",
+              "interval": "$interval",
               "timezone": "Etc/UTC",
               "theme": "dark",
-              "style": "1",
+              "style": "$style",
               "locale": "en",
               "enable_publishing": false,
               "withdateranges": true,
-              "hide_side_toolbar": false,
+              "hide_side_toolbar": $hide_side_toolbar,
               "allow_symbol_change": true,
               "details": true,
               "container_id": "tradingview_27074"
@@ -65,7 +72,16 @@ def trading_view(name: str, exchange: str):
     </div>
     <!-- TradingView Widget END -->
     """
-    return components.html(Template(chart).substitute(symbol=symbol), height=1024)
+    return components.html(
+        Template(chart).substitute(
+            symbol=symbol,
+            height=height,
+            interval=interval,
+            style=style,
+            hide_side_toolbar=json.dumps(hide_side_toolbar),
+        ),
+        height=height,
+    )
 
 
 @st.cache_data
