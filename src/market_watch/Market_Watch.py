@@ -1,7 +1,7 @@
 import streamlit as st
 
 from js_eval import get_user_agent, is_mobile
-from market_watch.utils import set_page_config_once, trading_view
+from market_watch.utils import display_tickers, set_page_config_once, trading_view
 
 
 def main():
@@ -52,6 +52,7 @@ def main():
         trading_view("DXY", "INDEX", **kwargs)
         trading_view("BLX", "BNC", **kwargs)
 
+    display_tickers(["SPX", "DXY", "GOLD", "BTC"])
 
 
 if __name__ == "__main__":

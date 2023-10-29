@@ -12,7 +12,7 @@ from pypfopt import EfficientFrontier, expected_returns, risk_models
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent.parent / "data"
 
-TICKERS = {"BTC": "BTC-USD", "SPX": "^SPX"}
+TICKERS = {"BTC": "BTC-USD", "SPX": "^SPX", "GOLD": "GC=F", "DXY": "DX-Y.NYB"}
 
 
 def set_page_config_once():
@@ -86,17 +86,23 @@ def trading_view(
 
 @st.cache_data
 def get_data(symbol: str) -> dict:
-    with open(DATA_DIR / "tickers" / f"{symbol.upper()}.json") as f:
-        data = json.load(f)
-        return {
-            col: data.get(col, "")
-            for col in [
-                "shortName",
-                "longName",
-                "longBusinessSummary",
-                "exchange",
-            ]
-        }
+    try:
+        with open(DATA_DIR / "tickers" / f"{symbol.upper()}.json") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        try:
+            data = yf.Ticker(symbol).info
+        except Exception:
+            data = {}
+    return {
+        col: data.get(col, "")
+        for col in [
+            "shortName",
+            "longName",
+            "longBusinessSummary",
+            "exchange",
+        ]
+    }
 
 
 @st.cache_data
@@ -129,9 +135,9 @@ def display_tickers(names):
             )
             info_tabs = st.tabs(["Closing Price", "Volume", "TradingView"])
             with info_tabs[0]:
-                st.line_chart(hist.Close)
+                st.plotly_chart(px.line(hist, y="Close"))
             with info_tabs[1]:
-                st.line_chart(hist.Volume)
+                st.plotly_chart(px.line(hist, y="Volume"))
             with info_tabs[2]:
                 trading_view(name, info["exchange"])
     price_tabs = st.tabs(["closing prices", "returns data", "returns chart"])
