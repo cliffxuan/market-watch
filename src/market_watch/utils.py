@@ -1,13 +1,17 @@
+import gzip
 import json
 from pathlib import Path
 from string import Template
 
+import orjson
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 import streamlit.components.v1 as components
 import yfinance as yf
 from pypfopt import EfficientFrontier, expected_returns, risk_models
+
+from market_watch import yahoo_finance
 
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent.parent / "data"
@@ -85,33 +89,45 @@ def trading_view(
 
 
 @st.cache_data
+def get_spx_tickers_info() -> dict:
+    with open(DATA_DIR / "spx_info.json.gz", "rb") as f:
+        return orjson.loads(gzip.decompress(f.read()))
+
+
+@st.cache_data
 def get_data(symbol: str) -> dict:
     try:
-        with open(DATA_DIR / "tickers" / f"{symbol.upper()}.json") as f:
-            data = json.load(f)
-    except FileNotFoundError:
+        data = get_spx_tickers_info()[symbol.upper()]
+    except KeyError:
         try:
-            data = yf.Ticker(symbol).info
+            data = yahoo_finance.get_info(symbol, modules=("quoteType", "assetProfile"))
         except Exception:
             data = {}
+    data = data.get("quoteType", {}) | data.get("assetProfile", {})
     return {
-        col: data.get(col, "")
+        col: data.get(col)
         for col in [
             "shortName",
             "longName",
             "longBusinessSummary",
             "exchange",
         ]
+        if data.get(col)
     }
 
 
 @st.cache_data
 def get_hist(ticker: str) -> pd.DataFrame:
-    return yf.Ticker(ticker).history(period="5y")
+    try:
+        df = get_spx_hists()
+        data = pd.DataFrame({col: df[col][ticker] for col in ["Close", "Volume"]})
+        return data
+    except KeyError:
+        return yf.Ticker(ticker).history(period="10y")
 
 
 @st.cache_data(ttl=3600)
-def get_hists() -> pd.DataFrame:
+def get_spx_hists() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "spx_hist.parquet")
 
 

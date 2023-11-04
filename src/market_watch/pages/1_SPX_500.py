@@ -5,7 +5,7 @@ from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
 from market_watch.utils import (
     DATA_DIR,
     display_tickers,
-    get_hists,
+    get_spx_hists,
     set_page_config_once,
 )
 
@@ -30,7 +30,7 @@ def main():
         ),
         on="Symbol",
     )
-    close = get_hists()["Close"]
+    close = get_spx_hists()["Close"]
     constituents = constituents.join(
         (close.iloc[-1] / close.iloc[-2] * 100 - 100).round(2).to_frame("1d %"),
         on="Symbol",

@@ -1,16 +1,21 @@
 # pipedream add-package pyarrow
+import argparse
 import datetime as dt
+import gzip
 import os
 from pathlib import Path
 
+import orjson
 import pandas as pd
 import yfinance as yf
 from github import Auth, Github
 
+from market_watch import yahoo_finance as yf2
+
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent.parent.parent / "data"
 SPX_HIST = "spx_hist.parquet"
-SPX_INFO = "spx_info.parquet"
+SPX_INFO = "spx_info.json.gz"
 
 
 def get_tickers(local: bool = True) -> list[str]:
@@ -24,7 +29,7 @@ def get_tickers(local: bool = True) -> list[str]:
 
 
 def get_hists(local: bool = True) -> pd.DataFrame:
-    return yf.Tickers(get_tickers(local)).history()
+    return yf.Tickers(get_tickers(local)).history(period="10y")
 
 
 def get_info(local: bool = True) -> pd.DataFrame:
@@ -35,9 +40,27 @@ def get_info(local: bool = True) -> pd.DataFrame:
             f"{str(i).zfill(len(str(len(tickers))))} / {len(tickers)} {ticker}",
             end="\r",
         )
-        info[ticker] = yf.Ticker(ticker).info
+        info[ticker] = yf.Ticker(ticker).info  # yf.Ticker.info is broken
     return pd.DataFrame.from_dict(info, orient="index").sort_values(
         by="marketCap", ascending=False
+    )
+
+
+def get_info_json(local: bool = True) -> dict[str, dict]:
+    info = {}
+    tickers = get_tickers(local)
+    for i, ticker in enumerate(tickers):
+        print(
+            f"{str(i).zfill(len(str(len(tickers))))} / {len(tickers)} {ticker}",
+            end="\r",
+        )
+        info[ticker] = yf2.get_info(ticker)
+    return dict(
+        sorted(
+            info.items(),
+            key=lambda item: item[1]["summaryDetail"]["marketCap"]["raw"],
+            reverse=True,
+        )
     )
 
 
@@ -71,16 +94,32 @@ def handler(pd: "pipedream"):  # type: ignore  # noqa
     return {"succeed": True, "message": message}
 
 
-def main():
-    hist_file_path = DATA_DIR / SPX_HIST
-    print(f"get hist data and write to {hist_file_path}")
-    get_hists().to_parquet(hist_file_path, compression="gzip")
-    commit(hist_file_path)
+def argument_parser():
+    parser = argparse.ArgumentParser(description="etl")
+    parser.add_argument("--commit", "-c", action="store_true", help="commit to github")
+    parser.add_argument("--all", "-a", action="store_true", help="get all")
+    parser.add_argument("--price", "-p", action="store_true", help="get price")
+    parser.add_argument("--info", "-i", action="store_true", help="get info")
+    return parser
 
-    info_file_path = DATA_DIR / SPX_INFO
-    print(f"get info data and write to {info_file_path}")
-    get_info().to_parquet(info_file_path, compression="gzip")
-    commit(info_file_path)
+
+def main(argv=None):
+    args = argument_parser().parse_args(argv)
+    if args.all or args.price:
+        hist_file_path = DATA_DIR / SPX_HIST
+        print(f"get hist data and write to {hist_file_path}")
+        get_hists().to_parquet(hist_file_path, compression="gzip")
+        if args.commit:
+            commit(hist_file_path)
+
+    if args.all or args.info:
+        info_file_path = DATA_DIR / SPX_INFO
+        print(f"get info data and write to {info_file_path}")
+        info = get_info_json()
+        with open(info_file_path, "wb") as f:
+            f.write(gzip.compress(orjson.dumps(info, option=orjson.OPT_INDENT_2)))
+        if args.commit:
+            commit(info_file_path)
 
 
 if __name__ == "__main__":
