@@ -107,9 +107,9 @@ def get_data(symbol: str) -> dict:
     return {
         col: data.get(col)
         for col in [
-            "shortName",
+            # "shortName",
             "longName",
-            "longBusinessSummary",
+            # "longBusinessSummary",
             "exchange",
         ]
         if data.get(col)
@@ -120,10 +120,11 @@ def get_data(symbol: str) -> dict:
 def get_hist(ticker: str) -> pd.DataFrame:
     try:
         df = get_spx_hists()
-        data = pd.DataFrame({col: df[col][ticker] for col in ["Close", "Volume"]})
-        return data
+        hist = pd.DataFrame({col: df[col][ticker] for col in ["Close", "Volume"]})
     except KeyError:
-        return yf.Ticker(ticker).history(period="10y")
+        hist = yf.Ticker(ticker).history(period="10y")
+    hist["LocalDate"] = hist.index.date
+    return hist.set_index(["LocalDate"])
 
 
 @st.cache_data(ttl=3600)
@@ -131,60 +132,67 @@ def get_spx_hists() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "spx_hist.parquet")
 
 
-def display_tickers(names):
+def display_tickers(names, show_details: bool = True, optimise: bool = True):
     df = pd.DataFrame({"LocalDate": []}).set_index("LocalDate")
-    ticker_tabs = st.tabs(names)
-    for i, name in enumerate(names):
-        with ticker_tabs[i]:
-            ticker = TICKERS.get(name, name)
-            info = get_data(ticker)
-            hist = get_hist(ticker)
-            hist["LocalDate"] = hist.index.date
-            hist = hist.set_index(["LocalDate"])
-            df = df.merge(hist["Close"].rename(name), how="outer", on="LocalDate")
-            st.write(
-                pd.DataFrame.from_dict(
-                    info,
-                    orient="index",
-                ).to_html(escape=False, header=False),
-                unsafe_allow_html=True,
-            )
-            info_tabs = st.tabs(["Closing Price", "Volume", "TradingView"])
-            with info_tabs[0]:
-                st.plotly_chart(px.line(hist, y="Close"))
-            with info_tabs[1]:
-                st.plotly_chart(px.line(hist, y="Volume"))
-            with info_tabs[2]:
-                trading_view(name, info["exchange"])
-    price_tabs = st.tabs(["closing prices", "returns data", "returns chart"])
+    for name in names:
+        ticker = TICKERS.get(name, name)
+        hist = get_hist(ticker)
+        df = df.merge(hist["Close"].rename(name), how="outer", on="LocalDate")
+    if show_details:
+        ticker_tabs = st.tabs(names)
+        for i, name in enumerate(names):
+            with ticker_tabs[i]:
+                ticker = TICKERS.get(name, name)
+                info = get_data(ticker)
+                st.write(
+                    pd.DataFrame.from_dict(
+                        info,
+                        orient="index",
+                    ).to_html(escape=False, header=False),
+                    unsafe_allow_html=True,
+                )
+                info_tabs = st.tabs(["Closing Price", "TradingView"])
+                with info_tabs[0]:
+                    st.plotly_chart(px.line(get_hist(ticker), y="Close"))
+                with info_tabs[1]:
+                    trading_view(name, info["exchange"])
+    price_tabs = st.tabs(["close", "return data", "return chart"])
     with price_tabs[0]:
-        st.dataframe(df)
+        st.dataframe(df.sort_index(ascending=False))
     with price_tabs[1]:
-        st.dataframe((df.ffill().pct_change() + 1).cumprod())
+        st.dataframe((df.ffill().pct_change() + 1).cumprod().sort_index(ascending=False))
     with price_tabs[2]:
         st.line_chart((df.ffill().pct_change() + 1).cumprod())
-    mu = expected_returns.mean_historical_return(df)
-    st.markdown("expected returns")
-    st.dataframe(mu)
-    S = risk_models.sample_cov(df)
-    ef = EfficientFrontier(mu, S)
-    cov = pd.DataFrame(
-        ef.cov_matrix,
-        index=ef.tickers,
-        columns=ef.tickers,
-    )
-    heatmap_cov = px.imshow(cov)
-    heatmap_cov.update_xaxes(side="top")
-    st.text("covariance")
-    st.plotly_chart(heatmap_cov)
 
-    heatmap_cor = px.imshow(risk_models.cov_to_corr(cov))
-    heatmap_cor.update_xaxes(side="top")
-    st.text("correlation")
-    st.plotly_chart(heatmap_cor)
+    corr_heatmap = px.imshow(df.corr(), text_auto=True)
+    corr_heatmap.update_xaxes(side="top")
+    st.markdown("### Correlation")
+    corr_tabs = st.tabs(["heatmap", "data"])
+    with corr_tabs[0]:
+        st.plotly_chart(corr_heatmap, theme=None)
+    with corr_tabs[1]:
+        st.dataframe(df.corr())
 
-    ef.max_sharpe()
-    clean_weights = ef.clean_weights()
-    st.plotly_chart(
-        px.pie(names=list(clean_weights.keys()), values=clean_weights.values())
-    )
+    if optimise:
+        st.markdown("### Portfolio Optimisation")
+        mu = expected_returns.mean_historical_return(df)
+        st.markdown("#### Expected Returns")
+        mu = st.data_editor(mu)
+        S = risk_models.sample_cov(df)
+        ef = EfficientFrontier(mu, S)
+        cov = pd.DataFrame(
+            ef.cov_matrix,
+            index=ef.tickers,
+            columns=ef.tickers,
+        )
+        heatmap_cov = px.imshow(cov, text_auto=True)
+        heatmap_cov.update_xaxes(side="top")
+        st.markdown("#### Covariance")
+        st.plotly_chart(heatmap_cov, theme=None)
+
+        ef.max_sharpe()
+        clean_weights = ef.clean_weights()
+        st.markdown("#### Optimized Portfolio")
+        st.plotly_chart(
+            px.pie(names=list(clean_weights.keys()), values=clean_weights.values())
+        )

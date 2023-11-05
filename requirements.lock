@@ -64,7 +64,7 @@ scs==3.2.3
 six==1.16.0
 smmap==5.0.1
 soupsieve==2.5
-streamlit==1.27.2
+streamlit==1.28.1
 streamlit-aggrid==0.3.4.post3
 tenacity==8.2.3
 toml==0.10.2

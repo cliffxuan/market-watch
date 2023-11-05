@@ -52,7 +52,7 @@ def main():
         trading_view("DXY", "INDEX", **kwargs)
         trading_view("BLX", "BNC", **kwargs)
 
-    display_tickers(["SPX", "DXY", "GOLD", "BTC"])
+    display_tickers(["SPX", "DXY", "GOLD", "BTC"], show_details=False, optimise=False)
 
 
 if __name__ == "__main__":

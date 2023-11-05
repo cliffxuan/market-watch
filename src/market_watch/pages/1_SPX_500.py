@@ -69,7 +69,7 @@ def main():
         enable_quicksearch=True,
     )
     if aggrid.selected_rows:
-        display_tickers([row["Symbol"] for row in aggrid.selected_rows])
+        display_tickers([row["Symbol"] for row in aggrid.selected_rows], optimise=True)
 
 
 if __name__ == "__main__":
