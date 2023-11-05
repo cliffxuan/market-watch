@@ -160,9 +160,9 @@ def display_tickers(names):
     with price_tabs[0]:
         st.dataframe(df)
     with price_tabs[1]:
-        st.dataframe((df.pct_change() + 1).cumprod())
+        st.dataframe((df.ffill().pct_change() + 1).cumprod())
     with price_tabs[2]:
-        st.line_chart((df.pct_change() + 1).cumprod())
+        st.line_chart((df.ffill().pct_change() + 1).cumprod())
     mu = expected_returns.mean_historical_return(df)
     st.markdown("expected returns")
     st.dataframe(mu)

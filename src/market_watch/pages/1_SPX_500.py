@@ -6,6 +6,7 @@ from market_watch.utils import (
     DATA_DIR,
     display_tickers,
     get_spx_hists,
+    get_spx_tickers_info,
     set_page_config_once,
 )
 
@@ -23,13 +24,17 @@ def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
 def main():
     st.markdown("# S&P 500")
     constituents = pd.read_csv(DATA_DIR / "spx_constituents.csv")
-    info = pd.read_parquet(DATA_DIR / "spx_info.parquet")
-    constituents = constituents.join(
-        info[["marketCap", "exchange"]].rename(
-            columns={"marketCap": "Market Cap", "exchange": "Exchange"}
-        ),
-        on="Symbol",
+    info = pd.DataFrame.from_dict(
+        {
+            key: {
+                "Exchange": val["price"]["exchange"],
+                "Market Cap": val["price"]["marketCap"]["raw"],
+            }
+            for key, val in get_spx_tickers_info().items()
+        },
+        orient="index",
     )
+    constituents = constituents.join(info, on="Symbol")
     close = get_spx_hists()["Close"]
     constituents = constituents.join(
         (close.iloc[-1] / close.iloc[-2] * 100 - 100).round(2).to_frame("1d %"),
