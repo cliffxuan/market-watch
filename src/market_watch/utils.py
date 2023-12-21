@@ -38,6 +38,9 @@ def trading_view(
     interval: str = "W",
     style: int = 1,
 ):
+    """
+    https://www.tradingview.com/widget/advanced-chart/
+    """
     exchange_mapping = {
         "NMS": "NASDAQ",
         "NYQ": "NYSE",

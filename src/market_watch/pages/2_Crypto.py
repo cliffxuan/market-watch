@@ -45,8 +45,14 @@ def main():
     }
     with chart_cols[0]:
         trading_view("BLX", "BNC", **kwargs)
+        trading_view("ETHUSD", "KRAKEN", **kwargs)
+        trading_view("ADAUSD", "BINANCE", **kwargs)
+        trading_view("SOLUSD", "BINANCE", **kwargs)
     with chart_cols[-1]:
-        trading_view("BLX", "BNC", **kwargs)
+        trading_view("DXY", "INDEX", **kwargs)
+        trading_view("ETHBTC", "KRAKEN", **kwargs)
+        trading_view("ADABTC", "BINANCE", **kwargs)
+        trading_view("SOLBTC", "BINANCE", **kwargs)
 
 
 if __name__ == "__main__":
