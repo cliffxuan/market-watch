@@ -23,9 +23,14 @@ def get_tickers(local: bool = True) -> list[str]:
         constituents = pd.read_csv(DATA_DIR / "spx_constituents.csv")
     else:
         constituents = pd.read_csv(
-            "https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/spx_constituents.csv"
+            "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
         )
-    return constituents["Symbol"].sort_values().to_list()
+    return (
+        constituents["Symbol"]
+        .apply(lambda x: x.replace(".", "-"))
+        .sort_values()
+        .to_list()
+    )
 
 
 def get_hists(local: bool = True) -> pd.DataFrame:
