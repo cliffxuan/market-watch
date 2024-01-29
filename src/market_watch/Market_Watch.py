@@ -48,9 +48,11 @@ def main():
             "SPX500USD", "OANDA", **kwargs
         )  # SP:SPX only avail from tradingview
         trading_view("GOLD", "TVC", **kwargs)
+        trading_view("USOIL", "TVC", **kwargs)
     with chart_cols[-1]:
         trading_view("DXY", "INDEX", **kwargs)
         trading_view("BLX", "BNC", **kwargs)
+        trading_view("USINTR", "ECONOMICS", **kwargs)
 
     display_tickers(["SPX", "DXY", "GOLD", "BTC"], show_details=False, optimise=False)
 
