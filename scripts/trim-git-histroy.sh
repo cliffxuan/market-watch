@@ -4,14 +4,60 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR/.." || exit 1
 
-git filter-branch -f --index-filter 'git rm -rf --cached --ignore-unmatch data/spx_hist.parquet' HEAD
-git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
+before() {
+  git filter-branch -f --index-filter 'git rm -rf --cached --ignore-unmatch data/spx_hist.parquet' HEAD
+  git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
+}
 
-python src/market_watch/etl/__main__.py --all
-git add data/spx_hist.parquet
-git add data/spx_info.json.gz
-git commit -m 'trimmed data and refetched'
-git push origin main -f
+fetch() {
+  python src/market_watch/etl/__main__.py --all
+}
 
-git reflog expire --expire=now --all
-git gc --aggressive --prune=now
+commit() {
+  git add data/spx_hist.parquet
+  git add data/spx_info.json.gz
+  git commit -m 'trimmed data and refetched'
+}
+
+push() {
+  git push origin main -f
+}
+
+clean() {
+  git reflog expire --expire=now --all
+  git gc --aggressive --prune=now
+}
+
+all() {
+  before
+  fetch
+  commit
+  push
+  clean
+}
+
+while getopts ":cfh" opt; do
+  case "$opt" in
+  c)
+    clean
+    exit 0
+    ;;
+  f)
+    fetch
+    exit 0
+    ;;
+  h)
+    echo Usage "$(basename "$0") [-c | -f]"
+    exit 0
+    ;;
+  \?)
+    echo "Invalid option: -$OPTARG" >&2
+    exit 1
+    ;;
+  :)
+    echo "Option -$OPTARG requires an argument." >&2
+    exit 1
+    ;;
+  esac
+done
+all
