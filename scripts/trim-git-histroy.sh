@@ -6,5 +6,12 @@ cd "$DIR/.." || exit 1
 
 git filter-branch -f --index-filter 'git rm -rf --cached --ignore-unmatch data/spx_hist.parquet' HEAD
 git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
+
+python src/market_watch/etl/__main__.py --all
+git add data/spx_hist.parquet
+git add data/spx_info.json.gz
+git commit -m 'trimmed data and refetched'
+git push origin main -f
+
 git reflog expire --expire=now --all
 git gc --aggressive --prune=now
