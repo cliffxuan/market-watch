@@ -4,8 +4,11 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR/.." || exit 1
 
-before() {
-  git filter-branch -f --index-filter 'git rm -rf --cached --ignore-unmatch data/spx_hist.parquet' HEAD
+FILE="data/spx_hist.parquet"
+
+remove() {
+  echo "remove $FILE from history"
+  git filter-branch -f --index-filter "git rm -rf --cached --ignore-unmatch $FILE" HEAD
   git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
 }
 
@@ -14,7 +17,7 @@ fetch() {
 }
 
 commit() {
-  git add data/spx_hist.parquet
+  git add $FILE
   git add data/spx_info.json.gz
   git commit -m 'trimmed data and refetched'
 }
@@ -24,19 +27,20 @@ push() {
 }
 
 clean() {
+  echo clean
   git reflog expire --expire=now --all
   git gc --aggressive --prune=now
 }
 
 all() {
-  before
+  remove
   fetch
   commit
   push
   clean
 }
 
-while getopts ":cfh" opt; do
+while getopts ":cfhr" opt; do
   case "$opt" in
   c)
     clean
@@ -44,6 +48,10 @@ while getopts ":cfh" opt; do
     ;;
   f)
     fetch
+    exit 0
+    ;;
+  r)
+    remove
     exit 0
     ;;
   h)
