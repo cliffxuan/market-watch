@@ -163,7 +163,9 @@ def display_tickers(names, show_details: bool = True, optimise: bool = True):
     with price_tabs[0]:
         st.dataframe(df.sort_index(ascending=False))
     with price_tabs[1]:
-        st.dataframe((df.ffill().pct_change() + 1).cumprod().sort_index(ascending=False))
+        st.dataframe(
+            (df.ffill().pct_change() + 1).cumprod().sort_index(ascending=False)
+        )
     with price_tabs[2]:
         st.line_chart((df.ffill().pct_change() + 1).cumprod())
 
