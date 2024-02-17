@@ -7,7 +7,6 @@ from market_watch.utils import (
     display_tickers,
     get_spx_hists,
     get_spx_tickers_info,
-    set_page_config_once,
 )
 
 
