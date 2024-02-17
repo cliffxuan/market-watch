@@ -4,7 +4,7 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR/.." || exit 1
 
-FILE="data/spx_hist.parquet"
+FILE="data/hist.parquet"
 
 remove() {
   echo "remove $FILE from history"
@@ -18,7 +18,7 @@ fetch() {
 
 commit() {
   git add $FILE
-  git add data/spx_info.json.gz
+  git add data/info.json.gz
   git commit -m 'trimmed data and refetched'
 }
 

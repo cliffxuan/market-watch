@@ -1,0 +1,102 @@
+Symbol,Name,Market Cap,Last Sale,Net Change,Percentage Change
+MSFT,Microsoft Corporation Common Stock,"3,002,342,062,690",$403.61,$0.45,-0.11%
+AAPL,Apple Inc. Common Stock,"2,815,209,325,110",$182.15,$0.16,-0.09%
+NVDA,NVIDIA Corporation Common Stock,"1,793,541,100,000",$725.70,$0.43,-0.06%
+GOOG,Alphabet Inc. Class C Capital Stock,"1,762,502,080,000",$141.70,$0.06,-0.04%
+AMZN,"Amazon.com, Inc. Common Stock","1,760,765,002,637",$169.00,$0.51,-0.30%
+GOOGL,Alphabet Inc. Class A Common Stock,"1,747,085,160,000",$140.42,$0.10,-0.07%
+META,"Meta Platforms, Inc. Class A Common Stock","1,206,684,424,772",$472.52,$0.80,-0.17%
+TSLA,"Tesla, Inc. Common Stock","636,798,843,479",$199.99,$0.04,0.0002
+AVGO,Broadcom Inc. Common Stock,"583,059,715,878","$1,244.00",$1.48,-0.12%
+ASML,ASML Holding N.V. New York Registry Shares,"365,465,173,506",$927.25,$1.69,-0.18%
+COST,Costco Wholesale Corporation Common Stock,"321,328,670,661",$722.425,$1.565,-0.22%
+AMD,"Advanced Micro Devices, Inc. Common Stock","280,936,858,045",$174.045,$0.175,0.001
+NFLX,"Netflix, Inc. Common Stock","252,709,959,077",$582.94,$1.01,-0.17%
+ADBE,Adobe Inc. Common Stock,"247,090,320,000",$547.48,$0.82,0.0015
+PEP,"PepsiCo, Inc. Common Stock","228,595,076,353",$166.02,$0.30,-0.18%
+AZN,AstraZeneca PLC American Depositary Shares,"199,261,337,507",$64.135,$0.135,-0.21%
+CSCO,"Cisco Systems, Inc. Common Stock (DE)","196,834,761,745",$48.32,$0.12,-0.25%
+TMUS,"T-Mobile US, Inc. Common Stock","190,385,427,706",$160.41,UNCH,UNCH
+PDD,PDD Holdings Inc. American Depositary Shares,"185,729,721,243",$135.18,$0.08,-0.06%
+INTC,Intel Corporation Common Stock,"183,960,280,000",$43.47,$0.04,-0.09%
+INTU,Intuit Inc. Common Stock,"183,565,232,640",$655.74,UNCH,UNCH
+QCOM,QUALCOMM Incorporated Common Stock,"170,402,040,000",$152.40,$0.29,-0.19%
+AMAT,"Applied Materials, Inc. Common Stock","165,856,062,145",$199.50,$0.07,-0.04%
+CMCSA,Comcast Corporation Class A Common Stock,"163,799,396,660",$41.18,$0.06,-0.15%
+AMGN,Amgen Inc. Common Stock,"152,040,192,214",$283.70,UNCH,UNCH
+TXN,Texas Instruments Incorporated Common Stock,"145,831,556,996",$159.65,$0.73,-0.46%
+ISRG,"Intuitive Surgical, Inc. Common Stock","133,401,141,508",$378.62,$0.01,UNCH
+HON,Honeywell International Inc. Common Stock,"129,984,449,477",$197.17,UNCH,UNCH
+BKNG,Booking Holdings Inc. Common Stock,"129,680,075,561","$3,712.10",$4.74,-0.13%
+LRCX,Lam Research Corporation Common Stock,"121,405,311,090",$926.03,UNCH,UNCH
+PANW,"Palo Alto Networks, Inc. Common Stock","115,529,073,000",$366.55,$0.14,0.0004
+VRTX,Vertex Pharmaceuticals Incorporated Common Stock,"108,793,840,285",$423.50,$1.30,0.0031
+SBUX,Starbucks Corporation Common Stock,"105,543,684,000",$93.14,$0.08,-0.09%
+REGN,"Regeneron Pharmaceuticals, Inc. Common Stock","104,059,765,503",$945.00,$3.05,-0.32%
+ADP,"Automatic Data Processing, Inc. Common Stock","103,917,689,734",$252.97,UNCH,UNCH
+ABNB,"Airbnb, Inc. Class A Common Stock","98,893,288,378",$152.30,$0.21,-0.14%
+MDLZ,"Mondelez International, Inc. Class A Common Stock","96,919,444,044",$71.98,UNCH,UNCH
+ADI,"Analog Devices, Inc. Common Stock","93,336,842,916",$187.45,$0.79,-0.42%
+KLAC,KLA Corporation Common Stock,"89,436,775,089",$661.35,UNCH,UNCH
+MELI,"MercadoLibre, Inc. Common Stock","89,428,697,855","$1,764.00",$4.78,-0.27%
+GILD,"Gilead Sciences, Inc. Common Stock","89,191,678,844",$71.51,$0.07,-0.10%
+MU,"Micron Technology, Inc. Common Stock","87,760,755,960",$79.4888,$0.0112,-0.01%
+SNPS,"Synopsys, Inc. Common Stock","84,035,064,715",$552.59,$0.32,-0.06%
+WDAY,"Workday, Inc. Class A Common Stock","79,602,210,000",$302.67,UNCH,UNCH
+CRWD,"CrowdStrike Holdings, Inc. Class A Common Stock","79,065,276,586",$328.39,$0.85,-0.26%
+CDNS,"Cadence Design Systems, Inc. Common Stock","79,030,981,700",$289.50,$0.80,-0.28%
+CSX,CSX Corporation Common Stock,"71,939,413,038",$36.7185,$0.0015,UNCH
+MAR,Marriott International Class A Common Stock,"69,948,342,221",$241.58,$0.05,-0.02%
+PYPL,"PayPal Holdings, Inc. Common Stock","63,382,813,837",$59.02,$0.12,-0.20%
+CTAS,Cintas Corporation Common Stock,"62,308,966,237",$626.00,$11.34,0.0184
+ORLY,"O'Reilly Automotive, Inc. Common Stock","62,182,404,034","$1,051.05",UNCH,UNCH
+NXPI,NXP Semiconductors N.V. Common Stock,"59,842,327,960",$232.16,UNCH,UNCH
+ROP,"Roper Technologies, Inc. Common Stock","58,278,942,372",$545.57,UNCH,UNCH
+MRVL,"Marvell Technology, Inc. Common Stock","57,307,705,000",$66.2483,$0.0417,-0.06%
+MNST,Monster Beverage Corporation,"57,245,082,967",$54.66,$0.36,-0.65%
+PCAR,PACCAR Inc. Common Stock,"56,371,883,492",$107.29,$0.48,-0.45%
+ADSK,"Autodesk, Inc. Common Stock","55,254,328,448",$257.60,$0.70,-0.27%
+LULU,lululemon athletica inc. Common Stock,"54,435,223,786",$449.80,$0.20,0.0004
+TEAM,Atlassian Corporation Class A Common Stock,"53,915,108,896",$207.01,$0.83,-0.40%
+FTNT,"Fortinet, Inc. Common Stock","52,586,449,613",$68.47,$0.01,-0.01%
+ROST,"Ross Stores, Inc. Common Stock","48,506,875,605",$142.81,$1.27,-0.88%
+CPRT,"Copart, Inc. (DE) Common Stock","47,012,931,400",$48.96,UNCH,UNCH
+ODFL,"Old Dominion Freight Line, Inc. Common Stock","46,204,176,786",$422.92,$0.53,-0.13%
+DASH,"DoorDash, Inc. Class A Common Stock","46,196,192,447",$116.3489,$0.3389,0.0029
+IDXX,"IDEXX Laboratories, Inc. Common Stock","46,138,542,529",$555.54,UNCH,UNCH
+DXCM,"DexCom, Inc. Common Stock","45,124,580,028",$117.05,UNCH,UNCH
+PAYX,"Paychex, Inc. Common Stock","44,394,816,892",$123.38,UNCH,UNCH
+MCHP,Microchip Technology Incorporated Common Stock,"44,101,060,518",$81.60,$0.01,-0.01%
+TTD,"The Trade Desk, Inc. Class A Common Stock","43,602,113,366",$88.51,$0.42,-0.47%
+KDP,Keurig Dr Pepper Inc. Common Stock,"43,306,469,110",$30.91,$0.06,-0.19%
+AEP,"American Electric Power Company, Inc. Common Stock","42,779,982,745",$81.16,$0.19,-0.23%
+DDOG,"Datadog, Inc. Class A Common Stock","42,626,553,924",$129.29,$0.45,-0.35%
+CHTR,"Charter Communications, Inc. Class A Common Stock New","42,551,059,487",$292.28,$0.72,-0.25%
+KHC,The Kraft Heinz Company Common Stock,"42,228,003,585",$34.6701,$0.1399,-0.40%
+CEG,Constellation Energy Corporation Common Stock,"41,890,101,673",$131.16,UNCH,UNCH
+FAST,Fastenal Company Common Stock,"40,193,628,711",$70.94,$0.70,0.01
+GEHC,GE HealthCare Technologies Inc. Common Stock,"39,169,828,839",$86.02,UNCH,UNCH
+CTSH,Cognizant Technology Solutions Corporation Class A Common Stock,"38,333,836,464",$77.00,UNCH,UNCH
+EA,Electronic Arts Inc. Common Stock,"38,038,623,591",$142.28,UNCH,UNCH
+ZS,"Zscaler, Inc. Common Stock","37,491,278,224",$252.75,UNCH,UNCH
+VRSK,"Verisk Analytics, Inc. Common Stock","35,478,210,743",$244.70,UNCH,UNCH
+EXC,Exelon Corporation Common Stock,"34,750,720,193",$34.90,$0.01,-0.03%
+MRNA,"Moderna, Inc. Common Stock","33,694,066,727",$88.34,$0.03,-0.03%
+ON,ON Semiconductor Corporation Common Stock,"33,605,125,193",$78.70,$0.06,0.0008
+MDB,"MongoDB, Inc. Class A Common Stock","33,566,931,398",$463.30,$1.76,-0.38%
+CSGP,"CoStar Group, Inc. Common Stock","33,240,778,155",$81.40,UNCH,UNCH
+XEL,Xcel Energy Inc. Common Stock,"32,595,789,963",$59.07,UNCH,UNCH
+CDW,CDW Corporation Common Stock,"32,334,014,266",$241.87,$0.50,0.0021
+FANG,"Diamondback Energy, Inc. Common Stock","32,113,472,732",$178.00,$1.42,-0.79%
+BIIB,Biogen Inc. Common Stock,"31,845,643,626",$219.08,UNCH,UNCH
+DLTR,Dollar Tree Inc. Common Stock,"31,236,299,608",$143.10,$0.27,-0.19%
+CCEP,Coca-Cola Europacific Partners plc Ordinary Shares,"31,018,002,512",$67.60,UNCH,UNCH
+GFS,GlobalFoundries Inc. Ordinary Shares,"29,239,428,800",$53.37,$0.01,-0.02%
+BKR,Baker Hughes Company Class A Common Stock,"29,175,692,985",$29.15,UNCH,UNCH
+ANSS,"ANSYS, Inc. Common Stock","28,654,994,070",$329.92,$0.07,0.0002
+SPLK,Splunk Inc. Common Stock,"26,179,845,000",$155.37,UNCH,UNCH
+TTWO,"Take-Two Interactive Software, Inc. Common Stock","26,164,543,719",$153.1352,$0.2448,-0.16%
+WBD,"Warner Bros. Discovery, Inc. Series A Common Stock","23,971,100,222",$9.86,$0.03,0.0031
+ILMN,"Illumina, Inc. Common Stock","22,773,508,000",$142.00,$1.41,-0.98%
+WBA,"Walgreens Boots Alliance, Inc. Common Stock","18,955,014,083",$21.935,$0.045,-0.20%
+SIRI,Sirius XM Holdings Inc. Common Stock,"18,443,817,571",$4.80,UNCH,UNCH

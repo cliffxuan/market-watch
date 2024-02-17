@@ -14,23 +14,21 @@ from market_watch import yahoo_finance as yf2
 
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent.parent.parent / "data"
-SPX_HIST = "spx_hist.parquet"
-SPX_INFO = "spx_info.json.gz"
+HIST_PARQUET = "hist.parquet"
+INFO_JSON_GZ = "info.json.gz"
 
 
 def get_tickers(local: bool = True) -> list[str]:
     if local:
-        constituents = pd.read_csv(DATA_DIR / "spx_constituents.csv")
+        spx_symbols = pd.read_csv(DATA_DIR / "spx-500.csv")["Symbol"]
+        nasdqd_symbols = pd.read_csv(DATA_DIR / "nasdaq-100.csv")["Symbol"]
     else:
-        constituents = pd.read_csv(
+        spx_symbols = pd.read_csv(
             "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
-        )
-    return (
-        constituents["Symbol"]
-        .apply(lambda x: x.replace(".", "-"))
-        .sort_values()
-        .to_list()
-    )
+        )["Symbol"]
+        nasdqd_symbols = pd.read_csv(DATA_DIR / "nasdaq-100.csv")["Symbol"]
+    symbols = pd.concat([spx_symbols, nasdqd_symbols]).drop_duplicates()
+    return symbols.apply(lambda x: x.replace(".", "-")).sort_values().to_list()
 
 
 def get_hists(local: bool = True) -> pd.DataFrame:
@@ -72,12 +70,12 @@ def get_info_json(local: bool = True) -> dict[str, dict]:
 def commit(file_path: Path, message: str = ""):
     with Github(auth=Auth.Token(os.environ["GITHUB_AUTH_TOKEN"])) as g:
         repo = g.get_repo("cliffxuan/market-watch")
-        contents = repo.get_contents(f"data/{SPX_HIST}", ref="main")
+        contents = repo.get_contents(f"data/{HIST_PARQUET}", ref="main")
         new_content = open(file_path, "rb").read()
         print("push to github")
         repo.update_file(
             path=contents.path,
-            message=message or f"updated {SPX_HIST} @ {dt.datetime.now().isoformat()}",
+            message=message or f"updated {HIST_PARQUET} @ {dt.datetime.now().isoformat()}",
             content=new_content,
             sha=contents.sha,
             branch="main",
@@ -91,10 +89,10 @@ def handler(pd: "pipedream"):  # type: ignore  # noqa
     """
     print(pd.steps["trigger"]["context"]["id"])
     df = get_hists(local=False)
-    file_path = Path("/tmp") / SPX_HIST
+    file_path = Path("/tmp") / HIST_PARQUET
     print(f"write file to {file_path}")
     df.to_parquet(file_path, compression="gzip")
-    message = f"updated {SPX_HIST} @ {dt.datetime.now().isoformat()} from pipedream"
+    message = f"updated {HIST_PARQUET} @ {dt.datetime.now().isoformat()} from pipedream"
     commit(file_path, message=message)
     return {"succeed": True, "message": message}
 
@@ -111,14 +109,14 @@ def argument_parser():
 def main(argv=None):
     args = argument_parser().parse_args(argv)
     if args.all or args.price:
-        hist_file_path = DATA_DIR / SPX_HIST
+        hist_file_path = DATA_DIR / HIST_PARQUET
         print(f"get hist data and write to {hist_file_path}")
         get_hists().to_parquet(hist_file_path, compression="gzip")
         if args.commit:
             commit(hist_file_path)
 
     if args.all or args.info:
-        info_file_path = DATA_DIR / SPX_INFO
+        info_file_path = DATA_DIR / INFO_JSON_GZ
         print(f"get info data and write to {info_file_path}")
         info = get_info_json()
         with open(info_file_path, "wb") as f:
@@ -128,4 +126,5 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    print(get_tickers())
     main()

@@ -93,7 +93,7 @@ def trading_view(
 
 @st.cache_data
 def get_spx_tickers_info() -> dict:
-    with open(DATA_DIR / "spx_info.json.gz", "rb") as f:
+    with open(DATA_DIR / "info.json.gz", "rb") as f:
         return orjson.loads(gzip.decompress(f.read()))
 
 
@@ -132,7 +132,7 @@ def get_hist(ticker: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=3600)
 def get_spx_hists() -> pd.DataFrame:
-    return pd.read_parquet(DATA_DIR / "spx_hist.parquet")
+    return pd.read_parquet(DATA_DIR / "hist.parquet")
 
 
 def display_tickers(names, show_details: bool = True, optimise: bool = True):
