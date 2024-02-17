@@ -9,6 +9,7 @@ FILE="data/hist.parquet"
 remove() {
   echo "remove $FILE from history"
   git filter-branch -f --index-filter "git rm -rf --cached --ignore-unmatch $FILE" HEAD
+  git filter-branch -f --index-filter "git rm -rf --cached --ignore-unmatch data/info.json.gz" HEAD
   git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
 }
 
