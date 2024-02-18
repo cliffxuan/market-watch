@@ -26,7 +26,9 @@ def get_tickers(local: bool = True) -> list[str]:
         spx_symbols = pd.read_csv(
             "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
         )["Symbol"]
-        nasdqd_symbols = pd.read_csv(DATA_DIR / "nasdaq-100.csv")["Symbol"]
+        nasdqd_symbols = pd.read_csv(
+            "https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/nasdaq-100.csv"
+        )["Symbol"]
     symbols = pd.concat([spx_symbols, nasdqd_symbols]).drop_duplicates()
     return symbols.apply(lambda x: x.replace(".", "-")).sort_values().to_list()
 
@@ -75,7 +77,8 @@ def commit(file_path: Path, message: str = ""):
         print("push to github")
         repo.update_file(
             path=contents.path,
-            message=message or f"updated {HIST_PARQUET} @ {dt.datetime.now().isoformat()}",
+            message=message
+            or f"updated {HIST_PARQUET} @ {dt.datetime.now().isoformat()}",
             content=new_content,
             sha=contents.sha,
             branch="main",
