@@ -3,13 +3,15 @@ import json
 from pathlib import Path
 from string import Template
 
+import cvxpy as cp
+import numpy as np
 import orjson
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 import streamlit.components.v1 as components
 import yfinance as yf
-from pypfopt import EfficientFrontier, expected_returns, risk_models
+from pypfopt import EfficientFrontier, expected_returns
 
 from market_watch import yahoo_finance
 
@@ -142,6 +144,8 @@ def display_tickers(names, show_details: bool = True, optimise: bool = True):
         hist = get_hist(ticker)
         df = df.merge(hist["Close"].rename(name), how="outer", on="LocalDate")
     if show_details:
+        st.divider()
+        st.markdown("## Chosen Items")
         ticker_tabs = st.tabs(names)
         for i, name in enumerate(names):
             with ticker_tabs[i]:
@@ -156,48 +160,132 @@ def display_tickers(names, show_details: bool = True, optimise: bool = True):
                 )
                 info_tabs = st.tabs(["Closing Price", "TradingView"])
                 with info_tabs[0]:
-                    st.plotly_chart(px.line(get_hist(ticker), y="Close"))
+                    st.plotly_chart(
+                        px.line(get_hist(ticker), y="Close"), use_container_width=True
+                    )
                 with info_tabs[1]:
                     trading_view(name, info["exchange"])
-    price_tabs = st.tabs(["close", "return data", "return chart"])
+    st.divider()
+    st.markdown("## Collective")
+    price_tabs = st.tabs(
+        [
+            "cumulative return chart",
+            "daily close",
+            "cumulative return data",
+        ]
+    )
     with price_tabs[0]:
-        st.dataframe(df.sort_index(ascending=False))
+        st.plotly_chart(
+            px.line((df.ffill().pct_change() + 1).cumprod(), log_y=True),
+            use_container_width=True,
+        )
     with price_tabs[1]:
+        st.dataframe(df.sort_index(ascending=False))
+    with price_tabs[2]:
         st.dataframe(
             (df.ffill().pct_change() + 1).cumprod().sort_index(ascending=False)
         )
-    with price_tabs[2]:
-        st.line_chart((df.ffill().pct_change() + 1).cumprod())
 
+    cov = df.pct_change().dropna(how="all").cov() * 252
     corr_heatmap = px.imshow(df.corr(), text_auto=True)
     corr_heatmap.update_xaxes(side="top")
-    st.markdown("### Correlation")
-    corr_tabs = st.tabs(["heatmap", "data"])
-    with corr_tabs[0]:
-        st.plotly_chart(corr_heatmap, theme=None)
-    with corr_tabs[1]:
-        st.dataframe(df.corr())
+    cov_heatmap = px.imshow(cov, text_auto=True)
+    cov_heatmap.update_xaxes(side="top")
+    st.divider()
+    cov_cor_cols = st.columns(2)
+    with cov_cor_cols[0]:
+        st.markdown("### Correlation")
+        corr_tabs = st.tabs(["heatmap", "data"])
+        with corr_tabs[0]:
+            st.plotly_chart(corr_heatmap, theme=None)
+        with corr_tabs[1]:
+            st.dataframe(df.corr())
+
+    with cov_cor_cols[1]:
+        st.markdown("### Covariance")
+        cov_tabs = st.tabs(["heatmap", "data"])
+        with cov_tabs[0]:
+            st.plotly_chart(cov_heatmap, theme=None)
+        with cov_tabs[1]:
+            st.dataframe(cov)
 
     if optimise:
         st.markdown("### Portfolio Optimisation")
-        mu = expected_returns.mean_historical_return(df)
+        mu: pd.Series = expected_returns.mean_historical_return(df)
+        returns_df = pd.DataFrame(
+            {"mean historical return": mu, "expected return": round(mu, 4)},
+        )
+        returns_df.index.name = "ticker"
+        st.divider()
         st.markdown("#### Expected Returns")
-        mu = st.data_editor(mu)
-        S = risk_models.sample_cov(df)
-        ef = EfficientFrontier(mu, S)
-        cov = pd.DataFrame(
-            ef.cov_matrix,
-            index=ef.tickers,
-            columns=ef.tickers,
+        returns_df = st.data_editor(
+            returns_df, disabled=["mean historical return", "ticker"]
         )
-        heatmap_cov = px.imshow(cov, text_auto=True)
-        heatmap_cov.update_xaxes(side="top")
-        st.markdown("#### Covariance")
-        st.plotly_chart(heatmap_cov, theme=None)
+        returns = returns_df["expected return"]
+        ef = EfficientFrontier(returns, cov)
 
-        ef.max_sharpe()
-        clean_weights = ef.clean_weights()
-        st.markdown("#### Optimized Portfolio")
-        st.plotly_chart(
-            px.pie(names=list(clean_weights.keys()), values=clean_weights.values())
+        st.divider()
+        st.markdown("#### Optimized Portfolios")
+        st.markdown("##### Maximize Sharpe Ratio")
+        risk_free_rate = st.slider(
+            "risk free rate",
+            min_value=0.005,
+            max_value=0.1,
+            step=0.005,
+            value=0.02,
+            format="%.3f",
         )
+        ef.max_sharpe(risk_free_rate=risk_free_rate)
+        clean_weights = ef.clean_weights()
+        max_sharpe_cols = st.columns([2, 1])
+        with max_sharpe_cols[0]:
+            st.plotly_chart(
+                px.pie(names=list(clean_weights.keys()), values=clean_weights.values())
+            )
+        ws = np.array(list(clean_weights.values()))
+        with max_sharpe_cols[1]:
+            st.write(pd.Series(ws, cov.index, name="weight"))
+            st.metric("risk", f"{np.sqrt(ws @ cov @ ws):.3f}")
+            st.metric("return", f"{ws @ returns:.3f}")
+        st.divider()
+        st.markdown("##### Minimize Risk")
+        w = cp.Variable(len(returns))
+        min_var_prob = cp.Problem(
+            objective=cp.Minimize(cp.QuadForm(w, cov)),
+            constraints=[
+                cp.sum(w) == 1,
+                w >= 0,
+            ],
+        )
+        min_var_prob.solve()
+        min_risk_cols = st.columns([2, 1])
+        with min_risk_cols[0]:
+            st.plotly_chart(px.pie(names=cov.index, values=w.value))
+        with min_risk_cols[1]:
+            st.write(pd.Series(w.value, cov.index, name="weight"))
+            st.metric("risk", f"{np.sqrt(w.value @ cov @ w.value):.3f}")
+            st.metric("return", f"{w.value @ returns:.3f}")
+        st.divider()
+        st.markdown("##### Efficient Frontier")
+        solutions = []
+        for ret in np.linspace(returns.min(), returns.max(), 20):
+            prob = cp.Problem(
+                objective=cp.Minimize(cp.QuadForm(w, cov)),
+                constraints=[
+                    cp.sum(w) == 1,
+                    w >= 0,
+                    w @ returns == ret,
+                ],
+            )
+            prob.solve()
+            solutions.append(
+                {
+                    "return": ret,
+                    "risk": np.sqrt(w.value @ cov @ w.value),
+                }
+            )
+        ef_cols = st.columns([2, 1])
+        with ef_cols[0]:
+            st.plotly_chart(px.scatter(pd.DataFrame(solutions), x="risk", y="return"))
+        with ef_cols[1]:
+            st.dataframe(pd.DataFrame(solutions))
