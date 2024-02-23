@@ -166,7 +166,7 @@ def display_tickers(names, show_details: bool = True, optimise: bool = True):
                 with info_tabs[1]:
                     trading_view(name, info["exchange"])
     st.divider()
-    if len(names) <= 2:
+    if len(names) < 2:
         return
     st.markdown("## Collective")
     price_tabs = st.tabs(

@@ -21,7 +21,7 @@ def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
 
 
 def index_table(name, csv_file, cols):
-    st.markdown(name)
+    st.markdown(f"# {name}")
     constituents = pd.read_csv(DATA_DIR / csv_file)
     info = pd.DataFrame.from_dict(
         {
@@ -60,12 +60,13 @@ def index_table(name, csv_file, cols):
         rowMultiSelectWithClick=True,
     )
     options = builder.build()
-    aggrid = AgGrid(
-        constituents,
-        options,
-        enable_enterprise_modules=False,
-        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_ALL_COLUMNS_TO_VIEW,
-        enable_quicksearch=True,
-    )
+    with st.expander(f"select {name} constituents to build a portfolio", expanded=True):
+        aggrid = AgGrid(
+            constituents,
+            options,
+            enable_enterprise_modules=False,
+            columns_auto_size_mode=ColumnsAutoSizeMode.FIT_ALL_COLUMNS_TO_VIEW,
+            enable_quicksearch=True,
+        )
     if aggrid.selected_rows:
         display_tickers([row["Symbol"] for row in aggrid.selected_rows], optimise=True)
