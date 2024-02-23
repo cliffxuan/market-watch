@@ -6,7 +6,7 @@ from market_watch.utils import (
     DATA_DIR,
     display_tickers,
     get_spx_hists,
-    get_spx_tickers_info,
+    get_tickers_info,
 )
 
 
@@ -29,7 +29,7 @@ def index_table(name, csv_file, cols):
                 "Exchange": val["price"]["exchange"],
                 "Market Cap": val["price"]["marketCap"]["raw"],
             }
-            for key, val in get_spx_tickers_info().items()
+            for key, val in get_tickers_info().items()
         },
         orient="index",
     )

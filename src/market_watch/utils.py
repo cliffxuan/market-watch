@@ -94,7 +94,7 @@ def trading_view(
 
 
 @st.cache_data
-def get_spx_tickers_info() -> dict:
+def get_tickers_info() -> dict:
     with open(DATA_DIR / "info.json.gz", "rb") as f:
         return orjson.loads(gzip.decompress(f.read()))
 
@@ -102,7 +102,7 @@ def get_spx_tickers_info() -> dict:
 @st.cache_data
 def get_data(symbol: str) -> dict:
     try:
-        data = get_spx_tickers_info()[symbol.upper()]
+        data = get_tickers_info()[symbol.upper()]
     except KeyError:
         try:
             data = yahoo_finance.get_info(symbol, modules=("quoteType", "assetProfile"))
@@ -166,6 +166,8 @@ def display_tickers(names, show_details: bool = True, optimise: bool = True):
                 with info_tabs[1]:
                     trading_view(name, info["exchange"])
     st.divider()
+    if len(names) <= 2:
+        return
     st.markdown("## Collective")
     price_tabs = st.tabs(
         [
