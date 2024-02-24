@@ -1,6 +1,6 @@
+import numpy as np
 import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
 
 from market_watch.utils import (
     DATA_DIR,
@@ -18,6 +18,17 @@ def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
     rank = constituents.index.map(lambda n: n + 1 if n <= goog.index.min() else n)
     constituents.insert(0, "Rank", rank)
     return constituents
+
+
+def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
+    """Search all the columns of rows with any matches."""
+    mask = np.column_stack(
+        [
+            df[col].astype(str).str.contains(regex, regex=True, case=case, na=False)
+            for col in df
+        ]
+    )
+    return df.loc[mask.any(axis=1)]
 
 
 def index_table(name, csv_file, cols):
@@ -47,26 +58,22 @@ def index_table(name, csv_file, cols):
     )
     constituents.insert(4, "7d %", constituents.pop("7d %"))
     constituents = rank_by_market_cap(constituents)
-    builder = GridOptionsBuilder.from_dataframe(constituents)
-    builder.configure_pagination(paginationAutoPageSize=False, paginationPageSize=600)
-    builder.configure_column(
-        "Market Cap",
-        type=["numericColumn", "numberColumnFilter", "customNumericFormat"],
-        valueFormatter="Intl.NumberFormat('en', { notation: 'compact' }).format(data['Market Cap'])",
+    st.markdown(f"Select {name} constituents to build a portfolio")
+    query = st.columns(2)[0].text_input(
+        "search",
+        label_visibility="collapsed",
+        placeholder="search",
     )
-    builder.configure_selection(
-        selection_mode="multiple",
-        use_checkbox=True,
-        rowMultiSelectWithClick=True,
+    constituents = search(constituents, query)
+    cols = list(constituents)
+    constituents[""] = False
+    constituents = st.data_editor(
+        constituents,
+        column_order=["", *cols],
+        disabled=cols,
+        hide_index=True,
+        height=None if len(constituents) < 22 else 800,
     )
-    options = builder.build()
-    with st.expander(f"select {name} constituents to build a portfolio", expanded=True):
-        aggrid = AgGrid(
-            constituents,
-            options,
-            enable_enterprise_modules=False,
-            columns_auto_size_mode=ColumnsAutoSizeMode.FIT_ALL_COLUMNS_TO_VIEW,
-            enable_quicksearch=True,
-        )
-    if aggrid.selected_rows:
-        display_tickers([row["Symbol"] for row in aggrid.selected_rows], optimise=True)
+    symbols = list(constituents[constituents[""]]["Symbol"])
+    if symbols:
+        display_tickers(symbols, optimise=True)
