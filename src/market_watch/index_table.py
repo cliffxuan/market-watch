@@ -66,14 +66,21 @@ def index_table(name, csv_file, cols):
     )
     constituents = search(constituents, query)
     cols = list(constituents)
-    constituents[""] = False
+    constituents["Select"] = False
     constituents = st.data_editor(
         constituents,
-        column_order=["", *cols],
+        column_order=["Select", *cols],
+        column_config={
+            "Select": st.column_config.CheckboxColumn(
+                "Select?",
+                help="Select to see more info and portfolio optimization",
+                default=False,
+            )
+        },
         disabled=cols,
         hide_index=True,
         height=None if len(constituents) < 22 else 800,
     )
-    symbols = list(constituents[constituents[""]]["Symbol"])
+    symbols = list(constituents[constituents["Select"]]["Symbol"])
     if symbols:
         display_tickers(symbols, optimize=True)
