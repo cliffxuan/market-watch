@@ -76,4 +76,4 @@ def index_table(name, csv_file, cols):
     )
     symbols = list(constituents[constituents[""]]["Symbol"])
     if symbols:
-        display_tickers(symbols, optimise=True)
+        display_tickers(symbols, optimize=True)

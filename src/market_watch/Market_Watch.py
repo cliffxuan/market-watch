@@ -54,7 +54,7 @@ def main():
         trading_view("BLX", "BNC", **kwargs)
         trading_view("USINTR", "ECONOMICS", **kwargs)
 
-    display_tickers(["SPX", "DXY", "GOLD", "BTC"], show_details=False, optimise=False)
+    display_tickers(["SPX", "DXY", "GOLD", "BTC"], show_details=False, optimize=False)
 
 
 if __name__ == "__main__":

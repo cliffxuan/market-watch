@@ -137,7 +137,7 @@ def get_spx_hists() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "hist.parquet")
 
 
-def display_tickers(names, show_details: bool = True, optimise: bool = True):
+def display_tickers(names, show_details: bool = True, optimize: bool = True):
     df = pd.DataFrame({"LocalDate": []}).set_index("LocalDate")
     for name in names:
         ticker = TICKERS.get(name, name)
@@ -211,7 +211,7 @@ def display_tickers(names, show_details: bool = True, optimise: bool = True):
         with cov_tabs[1]:
             st.dataframe(cov)
 
-    if optimise:
+    if optimize:
         st.markdown("### Portfolio Optimisation")
         mu: pd.Series = expected_returns.mean_historical_return(df)
         returns_df = pd.DataFrame(
