@@ -31,7 +31,6 @@ if __name__ == "__main__":
             y="Compund Return 2024",
             color=risk_return.index,
             symbol="Asset Class Type",
-            trendline="ols",
         ),
         use_container_width=True,
     )
