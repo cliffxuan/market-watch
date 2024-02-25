@@ -1,0 +1,60 @@
+Asset Class Type,Asset Class,Compund Return 2024,Arithmetic Return 2024,Volatility,Compund Return 2023
+Fixed Income,U.S. Inflation,2.50,2.51,1.52,2.60
+Fixed Income,U.S. Cash,2.90,2.90,0.59,2.40
+Fixed Income,U.S. Intermediate Treasuries,3.90,3.95,3.27,3.60
+Fixed Income,U.S. Long Treasuries,5.20,5.92,12.39,4.20
+Fixed Income,TIPS,4.60,4.76,5.75,4.30
+Fixed Income,U.S. Aggregate Bonds,5.10,5.19,4.28,4.60
+Fixed Income,U.S. Securitized,5.30,5.35,3.34,4.80
+Fixed Income,U.S. Short Duration Government/Credit,3.90,3.91,1.58,3.60
+Fixed Income,U.S. Long Duration Government/Credit,5.70,6.24,10.76,5.20
+Fixed Income,U.S. Inv Grade Corporate Bonds,5.80,6.04,7.14,5.50
+Fixed Income,U.S. Long Corporate Bonds,6.00,6.64,11.70,5.80
+Fixed Income,U.S. High Yield Bonds,6.50,6.83,8.36,6.80
+Fixed Income,U.S. Leveraged Loans,6.50,6.79,7.89,6.20
+Fixed Income,World Government Bonds hedged,4.20,4.27,3.74,3.70
+Fixed Income,World Government Bonds,4.80,5.03,6.91,4.40
+Fixed Income,World ex-U.S. Government Bonds hedged,4.00,4.07,3.71,3.60
+Fixed Income,World ex-U.S. Government Bonds,4.90,5.25,8.61,4.60
+Fixed Income,Emerging Markets Sovereign Debt,6.80,7.23,9.64,7.10
+Fixed Income,Emerging Markets Local Currency Debt,6.00,6.69,12.23,7.10
+Fixed Income,Emerging Markets Corporate Bonds,6.70,7.08,9.01,7.00
+Fixed Income,U.S. Muni 1-15 Yr Blend,4.00,4.07,3.89,3.70
+Fixed Income,U.S. Muni High Yield,5.80,6.14,8.49,5.20
+Equity,U.S. Large Cap,7.00,8.19,16.19,7.90
+Equity,U.S. Mid Cap,7.60,9.08,18.13,8.00
+Equity,U.S. Small Cap,7.20,9.07,20.44,8.10
+Equity,Euro Area Large Cap,9.70,11.83,22.15,10.50
+Equity,Japanese Equity,9.30,10.39,15.62,10.40
+Equity,Hong Kong Equity,9.90,11.80,20.89,7.50
+Equity,UK Large Cap,8.60,10.01,17.76,9.10
+Equity,EAFE Equity,9.20,10.58,17.64,9.80
+Equity,Chinese Domestic Equity,10.80,14.38,29.33,11.80
+Equity,Emerging Markets Equity,8.80,10.77,21.20,10.10
+Equity,AC Asia ex-Japan Equity,8.90,10.83,20.98,10.00
+Equity,AC World Equity,7.80,9.05,16.68,8.50
+Equity,U.S. Equity Value Factor,8.40,9.76,17.42,10.10
+Equity,U.S. Equity Momentum Factor,7.90,9.14,16.62,8.90
+Equity,U.S. Equity Quality Factor,7.00,8.00,14.81,7.80
+Equity,U.S. Equity Minimum Volatility Factor,7.40,8.17,12.98,8.20
+Equity,U.S. Equity Dividend Yield Factor,8.00,9.17,16.15,8.90
+Equity,Global Convertible Bonds hedged,7.90,8.53,11.78,9.10
+Alternative,U.S. Core Real Estate,7.50,8.02,10.60,5.70
+Alternative,U.S. Value-Added Real Estate,9.70,11.08,17.66,7.70
+Alternative,European Core Real Estate,7.30,8.06,12.84,6.80
+Alternative,Asia Pacific Core Real Estate,8.70,9.75,15.32,8.10
+Alternative,U.S. REITs,8.20,9.36,16.05,6.80
+Alternative,Commercial Mortgage Loans,6.30,6.58,7.78,-
+Alternative,Global Core Infrastructure,6.80,7.38,11.24,6.30
+Alternative,Global Core Transport,7.70,8.60,14.06,7.50
+Alternative,Global Timberland,6.20,6.74,10.81,6.70
+Alternative,Commodities,3.80,5.31,18.00,3.10
+Alternative,Gold,4.10,5.43,16.93,3.50
+Alternative,Private Equity,9.70,11.46,20.06,9.90
+Alternative,Venture Capital,9.20,11.34,22.17,8.50
+Alternative,Diversified Hedge Funds,5.00,5.16,5.80,5.00
+Alternative,Event Driven Hedge Funds,5.00,5.32,8.22,5.40
+Alternative,Long Bias Hedge Funds,4.70,5.27,11.04,5.00
+Alternative,Relative Value Hedge Funds,4.90,5.06,5.73,4.90
+Alternative,Macro Hedge Funds,3.60,3.84,7.08,4.10
+Alternative,Direct Lending,8.50,9.29,13.21,7.80

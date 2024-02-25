@@ -6,7 +6,37 @@ from market_watch.utils import DATA_DIR, set_page_config_once
 
 if __name__ == "__main__":
     set_page_config_once()
-    st.markdown("## Long-Term Capital Market Assumptions Correlation Matrices")
+    st.markdown("## Long-Term Capital Market Assumptions")
+    st.divider()
+    st.markdown("### Risk & Return")
+    risk_return = pd.read_csv(
+        DATA_DIR / "multi-asset-risk-return.csv", index_col="Asset Class"
+    )
+    st.dataframe(
+        risk_return,
+        height=960,
+        column_order=[
+            "Asset Class",
+            "Asset Class Type",
+            "Volatility",
+            "Compund Return 2024",
+            "Arithmetic Return 2024",
+            "Compund Return 2023",
+        ],
+    )
+    st.plotly_chart(
+        px.scatter(
+            risk_return,
+            x="Volatility",
+            y="Compund Return 2024",
+            color=risk_return.index,
+            symbol="Asset Class Type",
+            trendline="ols",
+        ),
+        use_container_width=True,
+    )
+    st.divider()
+    st.markdown("### Correlation Matrices")
     corr = pd.read_csv(
         DATA_DIR / "multi-asset-correlation.csv", index_col="Asset Class"
     )

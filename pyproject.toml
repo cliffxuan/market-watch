@@ -15,6 +15,7 @@ dependencies = [
     "streamlit-aggrid>=0.3.4.post3",
     "orjson>=3.9.10",
     "scipy>=1.10.1",
+    "statsmodels>=0.14.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
