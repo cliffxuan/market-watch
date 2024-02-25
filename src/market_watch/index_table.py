@@ -72,7 +72,7 @@ def index_table(name, csv_file, cols):
         column_order=["Select", *cols],
         column_config={
             "Select": st.column_config.CheckboxColumn(
-                "Select?",
+                "",
                 help="Select to see more info and portfolio optimization",
                 default=False,
             )
