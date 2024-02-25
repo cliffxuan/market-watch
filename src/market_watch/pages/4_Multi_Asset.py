@@ -24,14 +24,16 @@ if __name__ == "__main__":
             "Compund Return 2023",
         ],
     )
+    fig = px.scatter(
+        risk_return,
+        x="Volatility",
+        y="Compund Return 2024",
+        color=risk_return.index,
+        symbol="Asset Class Type",
+    )
+    fig.update_traces(marker={"size": 8})
     st.plotly_chart(
-        px.scatter(
-            risk_return,
-            x="Volatility",
-            y="Compund Return 2024",
-            color=risk_return.index,
-            symbol="Asset Class Type",
-        ),
+        fig,
         use_container_width=True,
     )
     st.divider()
