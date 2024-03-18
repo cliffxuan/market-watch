@@ -143,6 +143,7 @@ def display_tickers(names, show_details: bool = True, optimize: bool = True):
         ticker = TICKERS.get(name, name)
         hist = get_hist(ticker)
         df = df.merge(hist["Close"].rename(name), how="outer", on="LocalDate")
+    df = df.sort_index()
     if show_details:
         st.divider()
         st.markdown("## Chosen Items")
@@ -166,8 +167,6 @@ def display_tickers(names, show_details: bool = True, optimize: bool = True):
                 with info_tabs[1]:
                     trading_view(name, info["exchange"])
     st.divider()
-    if len(names) < 2:
-        return
     st.markdown("## Collective")
     price_tabs = st.tabs(
         [
@@ -188,6 +187,8 @@ def display_tickers(names, show_details: bool = True, optimize: bool = True):
             (df.ffill().pct_change() + 1).cumprod().sort_index(ascending=False)
         )
 
+    if len(names) < 2:
+        return
     cov = df.pct_change().dropna(how="all").cov() * 252
     corr_heatmap = px.imshow(df.corr(), text_auto=True)
     corr_heatmap.update_xaxes(side="top")
