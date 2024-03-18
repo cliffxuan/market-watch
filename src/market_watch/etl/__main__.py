@@ -56,14 +56,18 @@ def get_info_json(local: bool = True) -> dict[str, dict]:
     failed = []
     tickers = get_tickers(local)
     for i, ticker in enumerate(tickers):
-        print(
-            f"{str(i).zfill(len(str(len(tickers))))} / {len(tickers)} {ticker}",
-            end="\r",
-        )
-        try:
-            info[ticker] = yf2.get_info(ticker)
-            time.sleep(0.1)
-        except Exception:
+        for retry in range(1, 5):
+            print(
+                f"{str(i).zfill(len(str(len(tickers))))} / {len(tickers)} {ticker}",
+                end="\r",
+            )
+            try:
+                info[ticker] = yf2.get_info(ticker)
+                time.sleep(0.1 * retry)
+                break
+            except Exception:
+                pass
+        else:
             failed.append(ticker)
     if failed:
         print(f"{len(failed)} tickes failed:", failed)
