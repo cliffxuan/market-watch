@@ -3,13 +3,13 @@ import argparse
 import datetime as dt
 import gzip
 import os
+import time
 from pathlib import Path
 
 import orjson
 import pandas as pd
 import yfinance as yf
 from github import Auth, Github
-
 from market_watch import yahoo_finance as yf2
 
 PWD = Path(__file__).parent.absolute()
@@ -53,13 +53,20 @@ def get_info(local: bool = True) -> pd.DataFrame:
 
 def get_info_json(local: bool = True) -> dict[str, dict]:
     info = {}
+    failed = []
     tickers = get_tickers(local)
     for i, ticker in enumerate(tickers):
         print(
             f"{str(i).zfill(len(str(len(tickers))))} / {len(tickers)} {ticker}",
             end="\r",
         )
-        info[ticker] = yf2.get_info(ticker)
+        try:
+            info[ticker] = yf2.get_info(ticker)
+            time.sleep(0.1)
+        except Exception:
+            failed.append(ticker)
+    if failed:
+        print(f"{len(failed)} tickes failed:", failed)
     return dict(
         sorted(
             info.items(),
