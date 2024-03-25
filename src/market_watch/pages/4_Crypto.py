@@ -44,7 +44,7 @@ def main():
         "style": style,
     }
     with chart_cols[0]:
-        trading_view("BLX", "BNC", **kwargs)
+        trading_view("BTCUSD", "COINBASE", **kwargs)
         trading_view("ETHUSD", "KRAKEN", **kwargs)
         trading_view("ADAUSD", "BINANCE", **kwargs)
         trading_view("SOLUSD", "BINANCE", **kwargs)
