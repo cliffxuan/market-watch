@@ -49,7 +49,7 @@ def main():
         ]
     st.plotly_chart(fig)
 
-    st.markdown("## prices around dates")
+    st.markdown("## Local Price Actions")
     st.columns(2)[0].slider(
         "Padding",
         min_value=1,
