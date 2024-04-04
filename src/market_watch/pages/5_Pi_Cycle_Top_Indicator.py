@@ -16,7 +16,7 @@ def btc_hist():
 def main():
     st.markdown("# Pi Cycle Top Indicator")
     hist = btc_hist()
-    df = hist[["Close", "Volume"]]
+    df = hist.loc[:, ["Close", "Volume"]]
     df["111DMA"] = hist["Close"].rolling(window=111).mean()
     df["350DMA x 2"] = hist["Close"].rolling(window=350).mean() * 2
 

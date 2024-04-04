@@ -189,7 +189,7 @@ def display_tickers(names, show_details: bool = True, optimize: bool = True):
 
     if len(names) < 2:
         return
-    cov = df.pct_change().dropna(how="all").cov() * 252
+    cov = df.pct_change(fill_method=None).dropna(how="all").cov() * 252
     corr_heatmap = px.imshow(df.corr(), text_auto=True)
     corr_heatmap.update_xaxes(side="top")
     cov_heatmap = px.imshow(cov, text_auto=True)
