@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -7,6 +9,16 @@ from plotly.subplots import make_subplots
 
 PREFIX = "PI_CYCLE"
 
+HALVING_DATES = [
+    dt.datetime.fromisoformat(date).replace(tzinfo=dt.timezone.utc)
+    for date in [
+        "2012-11-28",
+        "2016-07-09",
+        "2020-05-11",
+        "2024-04-20",
+    ]
+]
+
 
 @st.cache_data
 def btc_hist():
@@ -14,29 +26,19 @@ def btc_hist():
 
 
 def main():
-    st.markdown("# Pi Cycle Top Indicator")
+    st.markdown("# Bitcoin Halving")
     hist = btc_hist()
     df = hist.loc[:, ["Close", "Volume"]]
-    df["111DMA"] = hist["Close"].rolling(window=111).mean()
-    df["350DMA x 2"] = hist["Close"].rolling(window=350).mean() * 2
-
-    df_above = df[df["111DMA"] > df["350DMA x 2"]]
-    prev_date = df_above.index[0]
-    cross_dates = [prev_date]
-    for date in df_above.index:
-        if prev_date is not None and (date - prev_date).days > 1:
-            cross_dates.append(date)
-        prev_date = date
 
     dfs_price_around = {}
     fig = px.line(
-        df[["Close", "111DMA", "350DMA x 2"]],
+        df[["Close"]],
         log_y=True,
         width=1024,
         height=768,
     )
     padding = st.session_state.setdefault(f"{PREFIX}#padding", 5)
-    for date in cross_dates:
+    for date in HALVING_DATES:
         fig.add_vline(
             x=date.timestamp() * 1000,
             line_dash="dash",
@@ -61,6 +63,8 @@ def main():
         ),
     )
     for date, df in dfs_price_around.items():
+        if df.empty:
+            continue
         st.markdown(f"### {date.strftime('%Y-%m-%d')}")
         st.dataframe(
             df.style.apply(
