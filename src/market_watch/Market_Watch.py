@@ -49,6 +49,8 @@ def main():
         )  # SP:SPX only avail from tradingview
         trading_view("GOLD", "TVC", **kwargs)
         trading_view("USOIL", "TVC", **kwargs)
+        trading_view("UNRATE", "FRED", **kwargs)
+        
     with chart_cols[-1]:
         trading_view("DXY", "INDEX", **kwargs)
         trading_view("BLX", "BNC", **kwargs)
