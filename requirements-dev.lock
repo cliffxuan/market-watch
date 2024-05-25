@@ -106,6 +106,7 @@ numpy==1.26.4
     # via ecos
     # via matplotlib
     # via osqp
+    # via pandas
     # via patsy
     # via pyarrow
     # via pydeck
@@ -226,7 +227,7 @@ stack-data==0.6.3
     # via ipython
 statsmodels==0.14.1
     # via market-watch
-streamlit==1.33.0
+streamlit==1.35.0
     # via market-watch
     # via streamlit-aggrid
 streamlit-aggrid==1.0.1
