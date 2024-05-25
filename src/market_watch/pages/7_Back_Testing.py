@@ -1,8 +1,20 @@
+from typing import Literal, NamedTuple
+
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from market_watch.utils import DATA_DIR, set_page_config_once
 from plotly.subplots import make_subplots
+
+
+class Transaction(NamedTuple):
+    date: pd.Timestamp
+    type: Literal["Buy", "Sell"]
+    price: float
+    profit: float
+    size: float
+    cash: float
 
 
 @st.cache_data
@@ -14,7 +26,9 @@ def get_hist(ticker, start=None, end=None):
 
 
 def main():
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.8, 0.2])
+    capital = 10_000
+    fee = 0.002
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, row_heights=[0.6, 0.2, 0.2])
     st.markdown("# Back Testing")
     hist = get_hist("MSFT", "2004-8-19", "2013-03-01")
     df = hist.loc[:, ["Close", "Volume"]]
@@ -29,10 +43,11 @@ def main():
             buy_dates.append(d_2)
         elif df.loc[d_0]["diff"] > 0 and df.loc[d_1]["diff"] < 0:
             sell_dates.append(d_2)
+    cash = capital
     trades = []
     if buy_dates and sell_dates:
         if buy_dates[0] > sell_dates[0]:
-            # start with buy
+            # TODO how about buying before this?
             sell_dates = sell_dates[1:]
         # TODO how about trailing sell?
         for buy_date, sell_date in zip(buy_dates, sell_dates):
@@ -43,15 +58,22 @@ def main():
             buy_profit = (last_sell_price - buy_price) / last_sell_price  # TODO check
             sell_price = df.loc[sell_date]["Price"]
             sell_profit = (sell_price - buy_price) / buy_price
-            trades.append((buy_date, "Buy", buy_price, buy_profit))
-            trades.append((sell_date, "Sell", sell_price, sell_profit))
+            size = np.floor(cash / (buy_price * (1 + fee)))
+            cash -= size * (buy_price + (1 + fee))
+            trades.append(
+                Transaction(buy_date, "Buy", buy_price, buy_profit, size, cash)
+            )
+            cash += sell_price * size * (1 - fee)
+            trades.append(
+                Transaction(sell_date, "Sell", sell_price, sell_profit, -size, cash)
+            )
     line = px.line(
         df[["Price", "10SMA", "20SMA"]],
         width=1024,
         height=768,
     )
     trade_df = pd.DataFrame(
-        trades, columns=["Date", "TX", "Price", "Profit"]
+        trades, columns=["Date", "TX", "Price", "Profit", "Size", "Cash"]
     ).set_index(["Date"])
     buy_df = trade_df[trade_df["TX"] == "Buy"]
     sell_df = trade_df[trade_df["TX"] == "Sell"]
