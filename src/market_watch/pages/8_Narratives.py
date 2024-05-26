@@ -1,3 +1,4 @@
+import plotly.express as px
 import pandas as pd
 import streamlit as st
 import yfinance as yf
@@ -33,6 +34,7 @@ def main():
             hist = get_hist(coin["ticker"])
             st.markdown(f"### {coin['name']}")
             st.dataframe(hist)
+            st.plotly_chart(px.line(hist, x=hist.index, y="Close"))
 
 
 if __name__ == "__main__":
