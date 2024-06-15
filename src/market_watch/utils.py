@@ -1,5 +1,6 @@
 import gzip
 import json
+from functools import reduce
 from pathlib import Path
 from string import Template
 
@@ -93,35 +94,36 @@ def trading_view(
     )
 
 
-@st.cache_data
+@st.cache_data(ttl="1h")
 def get_tickers_info() -> dict:
     with open(DATA_DIR / "info.json.gz", "rb") as f:
         return orjson.loads(gzip.decompress(f.read()))
 
 
-@st.cache_data
+@st.cache_data(ttl="1h")
 def get_data(symbol: str) -> dict:
     try:
         data = get_tickers_info()[symbol.upper()]
     except KeyError:
         try:
-            data = yahoo_finance.get_info(symbol, modules=("quoteType", "assetProfile"))
+            data = yahoo_finance.get_info(
+                symbol, modules=("quoteType", "assetProfile", "price")
+            )
         except Exception:
             data = {}
-    data = data.get("quoteType", {}) | data.get("assetProfile", {})
     return {
-        col: data.get(col)
-        for col in [
-            # "shortName",
-            "longName",
-            # "longBusinessSummary",
-            "exchange",
-        ]
-        if data.get(col)
+        label: val
+        for label, col in {
+            "name": "quoteType.longName",
+            "description": "assetProfile.longBusinessSummary",
+            "exchange": "quoteType.exchange",
+            "market cap": "price.marketCap.fmt",
+        }.items()
+        if (val := reduce(lambda d, k: d.get(k), col.split("."), data))
     }
 
 
-@st.cache_data
+@st.cache_data(ttl="1h")
 def get_hist(ticker: str) -> pd.DataFrame:
     try:
         df = get_spx_hists()
@@ -132,7 +134,7 @@ def get_hist(ticker: str) -> pd.DataFrame:
     return hist.set_index(["LocalDate"])
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl="1h")
 def get_spx_hists() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "hist.parquet")
 
