@@ -16,12 +16,14 @@ NARRATIVES = {
     ],
     "AI": [
         {"name": "RNDR", "ticker": "RNDR-USD"},
+        {"name": "FET", "ticker": "FET-USD"},
     ],
     "RWA": [
         {"name": "ONDO", "ticker": "ONDO-USD"},
         {"name": "CFG", "ticker": "CFG-USD"},
         {"name": "Pendle", "ticker": "Pendle-USD"},
         {"name": "GFI", "ticker": "GFI13967-USD"},
+        {"name": "OM", "ticker": "OM-USD"},
     ],
 }
 
