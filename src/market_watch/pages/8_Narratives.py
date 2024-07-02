@@ -2,30 +2,98 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 import yfinance as yf
-from market_watch.utils import set_page_config_once
+from market_watch.utils import set_page_config_once, trading_view
 
 NARRATIVES = {
-    "BTC": [
-        {"name": "BTC", "ticker": "BTC-USD"},
+    "BRC20": [
+        {
+            "name": "Stacks",
+            "ticker": "STX4847-USD",
+            "symbol": "STXUSD",
+        },
     ],
     "SOL": [
-        {"name": "PYTH", "ticker": "PYTH-USD"},
+        {
+            "name": "PYTH",
+            "ticker": "PYTH-USD",
+            "symbol": "PYTHUSD",
+        },
     ],
     "LAYER1": [
-        {"name": "SUI", "ticker": "SUI20947-USD"},
+        {
+            "name": "SUI",
+            "ticker": "SUI20947-USD",
+            "symbol": "SUIUSD",
+        },
+        {
+            "name": "NEAR Protocol",
+            "ticker": "NEAR-USD",
+            "symbol": "NEARUSD",
+        },
+        {
+            "name": "Aptos",
+            "ticker": "APT21794-USD",
+            "symbol": "APTUSD",
+        },
     ],
     "AI": [
-        {"name": "RNDR", "ticker": "RNDR-USD"},
-        {"name": "FET", "ticker": "FET-USD"},
+        {
+            "name": "RNDR",
+            "ticker": "RNDR-USD",
+            "symbol": "RNDRUSD",
+        },
+        {
+            "name": "FET",
+            "ticker": "FET-USD",
+            "symbol": "FETUSD",
+        },
+    ],
+    "Modular": [
+        {
+            "name": "Celestia",
+            "ticker": "TIA22861-USD",
+            "symbol": "TIAUSD",
+        },
     ],
     "RWA": [
-        {"name": "ONDO", "ticker": "ONDO-USD"},
-        {"name": "CFG", "ticker": "CFG-USD"},
-        {"name": "Pendle", "ticker": "Pendle-USD"},
-        {"name": "GFI", "ticker": "GFI13967-USD"},
-        {"name": "OM", "ticker": "OM-USD"},
+        {
+            "name": "ONDO",
+            "ticker": "ONDO-USD",
+            "symbol": "ONDOUSD",
+            "exchange": "COINBASE",
+        },
+        {
+            "name": "CFG",
+            "ticker": "CFG-USD",
+            "symbol": "CFGUSD",
+        },
+        {
+            "name": "Pendle",
+            "ticker": "Pendle-USD",
+            "symbol": "PENDLEUSD",
+        },
+        {
+            "name": "GFI",
+            "ticker": "GFI13967-USD",
+            "symbol": "GFIUSD",
+        },
+        {
+            "name": "OM",
+            "ticker": "OM-USD",
+            "symbol": "OMUSD",
+        },
+    ],
+    "BASE": [
+        {
+            "name": "Aerodrome Finance",
+            "ticker": "AERO29270-USD",
+            "symbol": "AEROUSD",
+            "exchange": "COINBASE",
+        }
     ],
 }
+
+NAME_TO_DATA = {coin["name"]: coin for coins in NARRATIVES.values() for coin in coins}
 
 
 @st.cache_data
@@ -34,8 +102,17 @@ def get_hist(name: str) -> pd.DataFrame:
     return ticker.history(period="max")[["Open", "High", "Low", "Close", "Volume"]]  # type: ignore
 
 
+def display_coins(names: list[str]):
+    tabs = st.tabs(names)
+    for i, name in enumerate(names):
+        data = NAME_TO_DATA[name]
+        with tabs[i]:
+            trading_view(name=data["symbol"], exchange=data.get("exchange", "binance"))
+
+
 def main():
     st.markdown("# Naratives")
+
     spike_setting = dict(
         showspikes=True,
         spikemode="across",
@@ -44,17 +121,63 @@ def main():
         spikethickness=1,
         spikecolor="grey",
     )
+    data = []
+    debug = True
+    debug = False
     for narrative in NARRATIVES:
-        st.markdown(f"## {narrative}")
         for coin in NARRATIVES[narrative]:
             hist = get_hist(coin["ticker"])
-            st.markdown(f"### {coin['name']}")
-            st.dataframe(hist)
-            fig = px.line(hist, x=hist.index, y="Close")
-            fig.update_xaxes(**spike_setting)
-            fig.update_yaxes(**spike_setting)
-            fig.update_layout(hoverdistance=0)
-            st.plotly_chart(fig)
+            ticker = yf.ticker.Ticker(coin["ticker"])
+            close = hist["Close"]
+            if debug:
+                st.markdown(f"### {coin['name']}")
+                st.dataframe(hist)
+                fig = px.line(hist, x=hist.index, y="Close")
+                fig.update_xaxes(**spike_setting)
+                fig.update_yaxes(**spike_setting)
+                fig.update_layout(hoverdistance=0)
+                st.plotly_chart(fig)
+            record = {
+                "Name": coin["name"],
+                "Narrative": narrative,
+                "Market Cap": ticker.info["marketCap"],
+                "Price": close.iloc[-1],
+                "ATH Date": close.idxmax().strftime("%Y-%m-%d"),  # type: ignore
+                "ATH %": (close.iloc[-1] / close.max() - 1).round(4) * 100,
+            }
+            for day in [1, 7, 30, 90, 180, 360]:
+                try:
+                    record[f"{day}d %"] = (
+                        close.iloc[-1] / close.iloc[-day - 1] - 1
+                    ).round(4) * 100
+                except IndexError:
+                    record[f"{day}d %"] = None
+            record["Historical Prices"] = close.values[::-1]
+            data.append(record)
+    df = pd.DataFrame(data)
+    cols = list(df)
+    df["Select"] = False
+    selected = st.data_editor(
+        df,
+        column_order=["Select", *cols],
+        column_config={
+            "Select": st.column_config.CheckboxColumn(
+                "",
+                help="Select to see more info and portfolio optimization",
+                default=False,
+            ),
+            "Historical Prices": st.column_config.LineChartColumn(
+                "Historical Prices",
+                width="medium",
+            ),
+        },
+        disabled=cols,
+        hide_index=True,
+        height=(len(df) + 1) * 35 + 3,
+    )
+    names = list(selected[selected["Select"]]["Name"])
+    if names:
+        display_coins(names)
 
 
 if __name__ == "__main__":
