@@ -66,6 +66,7 @@ NARRATIVES = {
             "name": "CFG",
             "ticker": "CFG-USD",
             "symbol": "CFGUSD",
+            "exchange": "KRAKEN",
         },
         {
             "name": "Pendle",
