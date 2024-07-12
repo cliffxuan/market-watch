@@ -77,6 +77,7 @@ NARRATIVES = {
             "name": "GFI",
             "ticker": "GFI13967-USD",
             "symbol": "GFIUSD",
+            "exchange": "COINBASE",
         },
         {
             "name": "OM",
