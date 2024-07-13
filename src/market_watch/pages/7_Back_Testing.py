@@ -17,7 +17,7 @@ class Transaction(NamedTuple):
     cash: float
 
 
-@st.cache_data
+@st.cache_data(ttl="1h")
 def get_hist(ticker, start=None, end=None):
     df = pd.read_csv(DATA_DIR / "GOOG.csv")
     df["Date"] = pd.to_datetime(df["Date"])

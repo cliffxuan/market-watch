@@ -20,7 +20,7 @@ HALVING_DATES = [
 ]
 
 
-@st.cache_data
+@st.cache_data(ttl="1h")
 def btc_hist():
     return yf.Ticker("BTC-USD").history(start="2013-04-28")
 

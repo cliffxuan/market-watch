@@ -98,7 +98,7 @@ NARRATIVES = {
 NAME_TO_DATA = {coin["name"]: coin for coins in NARRATIVES.values() for coin in coins}
 
 
-@st.cache_data
+@st.cache_data(ttl="1h")
 def get_hist(name: str) -> pd.DataFrame:
     ticker = yf.ticker.Ticker(name)
     return ticker.history(period="max")[["Open", "High", "Low", "Close", "Volume"]]  # type: ignore
