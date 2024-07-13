@@ -154,7 +154,7 @@ def main():
                     ).round(4) * 100
                 except IndexError:
                     record[f"{day}d %"] = None
-            record["Historical Prices"] = close.values[::-1]
+            record["Historical Prices"] = close.values
             data.append(record)
     df = pd.DataFrame(data)
     cols = list(df)
