@@ -93,6 +93,20 @@ NARRATIVES = {
             "exchange": "COINBASE",
         }
     ],
+    "DePIN": [
+        {
+            "name": "AIOZ",
+            "ticker": "AIOZ-USD",
+            "symbol": "AIOZUSD",
+            "exchange": "COINBASE",
+        },
+        {
+            "name": "Helium",
+            "ticker": "HNT-USD",
+            "symbol": "HNTUSD",
+            "exchange": "COINBASE",
+        },
+    ]
 }
 
 NAME_TO_DATA = {coin["name"]: coin for coins in NARRATIVES.values() for coin in coins}
