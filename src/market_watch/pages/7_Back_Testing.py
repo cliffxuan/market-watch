@@ -25,25 +25,12 @@ def get_hist(ticker):
     return df.set_index(["Date"])
 
 
-def main():
-    st.markdown("# Back Testing Trading Strategy")
-    input_cols = st.columns(3)
-    ticker = input_cols[0].selectbox(
-        "yahoo finance ticker", options=["MSFT", "AAPL", "NVDA", "GOOGL"]
-    )
-    capital = input_cols[1].number_input("starting capital", value=10_000)
-    fee = input_cols[2].number_input("fee %", value=0.2) / 100
-    st.markdown("## Moving Average Cross-over")
-    ma_col_0, ma_col_1 = st.columns(2)
-    fast_ma = int(ma_col_0.number_input("Fast Moving Average", value=10))
-    slow_ma = int(ma_col_1.number_input("Slow Moving Average", value=20))
-    hist = get_hist(ticker)
-    df = hist.loc[:, ["Close", "Volume"]]
+def run(df, fast_ma, slow_ma, start_capital, fee):
     fast_ma_name = f"{fast_ma}MA"
     slow_ma_name = f"{slow_ma}MA"
-    df[fast_ma_name] = hist["Close"].rolling(window=fast_ma).mean()
-    df[slow_ma_name] = hist["Close"].rolling(window=slow_ma).mean()
-    df["Price"] = hist["Close"]
+    df[fast_ma_name] = df["Close"].rolling(window=fast_ma).mean()
+    df[slow_ma_name] = df["Close"].rolling(window=slow_ma).mean()
+    df["Price"] = df["Close"]
     df["diff"] = df[fast_ma_name] - df[slow_ma_name]
     buy_dates = []
     sell_dates = []
@@ -52,7 +39,7 @@ def main():
             buy_dates.append(d_2)
         elif df.loc[d_0]["diff"] > 0 and df.loc[d_1]["diff"] < 0:
             sell_dates.append(d_2)
-    cash = capital
+    cash = start_capital
     trades = []
     if buy_dates and sell_dates:
         if buy_dates[0] > sell_dates[0]:
@@ -79,6 +66,29 @@ def main():
     trade_df = pd.DataFrame(
         trades, columns=["Date", "TX", "Price", "Profit", "Size", "Cash"]
     ).set_index(["Date"])
+    last_trade = trade_df.iloc[-1]
+    if last_trade["TX"] == "Sell":
+        end_capital = last_trade["Cash"]
+    else:
+        end_capital = last_trade["Size"] * last_trade["Price"]
+    return trade_df, end_capital
+
+
+def main():
+    st.markdown("# Back Testing Trading Strategy")
+    input_cols = st.columns(3)
+    ticker = input_cols[0].selectbox(
+        "yahoo finance ticker", options=["MSFT", "AAPL", "NVDA", "GOOGL"]
+    )
+    start_capital = input_cols[1].number_input("starting capital", value=10_000)
+    fee = input_cols[2].number_input("fee %", value=0.2) / 100
+    st.markdown("## Moving Average Cross-over")
+    ma_col_0, ma_col_1 = st.columns(2)
+    fast_ma = int(ma_col_0.number_input("Fast Moving Average", value=10))
+    slow_ma = int(ma_col_1.number_input("Slow Moving Average", value=20))
+    hist = get_hist(ticker)
+    df = hist.loc[:, ["Close", "Volume"]]
+    trade_df, end_capital = run(df, fast_ma, slow_ma, start_capital, fee)
 
     st.markdown("## Trades")
     result_cols = st.columns(2)
@@ -86,30 +96,27 @@ def main():
         st.dataframe(trade_df)
 
     with result_cols[1]:
-        last_trade = trade_df.iloc[-1]
-        if last_trade["TX"] == "Sell":
-            end_value = last_trade["Cash"]
-        else:
-            end_value = last_trade["Size"] * last_trade["Price"]
         cols = st.columns(2)
-        cols[0].metric("final capital", f"{end_value:,.0f}")
-        cols[1].metric("profit", f"{end_value / capital * 100:,.2f} %")
+        cols[0].metric("final capital", f"{end_capital:,.0f}")
+        cols[1].metric("profit", f"{end_capital / start_capital * 100:,.2f} %")
 
         buy_and_hold = (
             trade_df.iloc[0]["Size"] * df.iloc[-1]["Price"] + trade_df.iloc[0]["Cash"]
         )
         cols[0].metric("buy & hold", f"{buy_and_hold:,.0f}")
-        cols[1].metric("buy & hold profit", f"{buy_and_hold / capital * 100:,.2f} %")
+        cols[1].metric(
+            "buy & hold profit", f"{buy_and_hold / start_capital * 100:,.2f} %"
+        )
 
         winning_trades = trade_df[trade_df["Profit"] > 0]
-        winning_rate = len(winning_trades) / len(trades)
+        winning_rate = len(winning_trades) / len(trade_df)
         cols[0].metric("total trades", f"{len(trade_df):,}")
         cols[1].metric("winning rate", f"{winning_rate * 100:,.2f} %")
 
     buy_df = trade_df[trade_df["TX"] == "Buy"]
     sell_df = trade_df[trade_df["TX"] == "Sell"]
     line = px.line(
-        df[["Price", fast_ma_name, slow_ma_name]],
+        df[["Price", f"{fast_ma}MA", f"{slow_ma}MA"]],  # TODO: dedup
         width=1024,
         height=768,
     )
