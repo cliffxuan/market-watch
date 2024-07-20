@@ -1,11 +1,10 @@
-import datetime as dt
 from typing import Literal, NamedTuple
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 import yfinance as yf
+from market_watch.strategy import multi_run, run
 from market_watch.utils import set_page_config_once
 from plotly.subplots import make_subplots
 
@@ -24,98 +23,6 @@ def get_hist(ticker):
     df = yf.Ticker(ticker).history(period="10y")
     df["Date"] = df.index.date  # type: ignore
     return df.set_index(["Date"])
-
-
-def run(df, fast_ma, slow_ma, start_capital, fee):
-    fast_ma_name = f"{fast_ma}MA"
-    slow_ma_name = f"{slow_ma}MA"
-    df[fast_ma_name] = df["Close"].rolling(window=fast_ma).mean()
-    df[slow_ma_name] = df["Close"].rolling(window=slow_ma).mean()
-    df["Price"] = df["Close"]
-    df["diff"] = df[fast_ma_name] - df[slow_ma_name]
-    buy_dates = []
-    sell_dates = []
-    order_open = False
-    for d_0, d_1, d_2 in zip(df.index, df.index[1:], df.index[2:]):
-        if df.loc[d_0]["diff"] < 0 and (
-            df.loc[d_1]["diff"] > 0
-            or (df.loc[d_1]["diff"] == 0 and df.loc[d_2]["diff"] > 0)
-        ):
-            if not order_open:
-                buy_dates.append(d_2)
-                order_open = True
-            else:
-                st.dataframe(df)
-                st.write([d_0, d_1, d_2])
-                raise ValueError("cannot open another order")
-        elif df.loc[d_0]["diff"] > 0 and (
-            df.loc[d_1]["diff"] < 0
-            or (df.loc[d_1]["diff"] == 0 and df.loc[d_2]["diff"] < 0)
-        ):
-            if order_open:
-                sell_dates.append(d_2)
-                order_open = False
-            elif buy_dates:
-                st.dataframe(
-                    df.loc[d_0 - dt.timedelta(days=20) : d_0 + dt.timedelta(days=20)]
-                )
-                st.write([d_0, d_1, d_2])
-                raise ValueError("no order to close")
-
-    cash = start_capital
-    trades = []
-    if buy_dates and sell_dates:
-        # if buy_dates[0] > sell_dates[0]:
-        #     # TODO how about buying before this?
-        #     sell_dates = sell_dates[1:]
-        # TODO how about trailing sell?
-        for buy_date, sell_date in zip(buy_dates, sell_dates):
-            if buy_date > sell_date:
-                raise ValueError(f"cannot buy on {buy_date} after sell on {sell_date}")
-            if trades and buy_date < trades[-1].date:
-                raise ValueError(
-                    f"buy date {buy_date} before the last trade at {trades[-1].date}"
-                )
-            buy_price = df.loc[buy_date]["Price"]
-            last_sell_price = trades[-1][2] if trades else buy_price
-            buy_profit = (last_sell_price - buy_price) / last_sell_price  # TODO check
-            sell_price = df.loc[sell_date]["Price"]
-            sell_profit = (sell_price - buy_price) / buy_price
-            size = np.floor(cash / (buy_price * (1 + fee)))
-            cash -= size * (buy_price * (1 + fee))
-            trades.append(
-                Transaction(buy_date, "Buy", buy_price, buy_profit, size, cash)
-            )
-            cash += sell_price * size * (1 - fee)
-            trades.append(
-                Transaction(sell_date, "Sell", sell_price, sell_profit, -size, cash)
-            )
-    trade_df = pd.DataFrame(
-        trades, columns=["Date", "TX", "Price", "Profit", "Size", "Cash"]
-    ).set_index(["Date"])
-    if trades:
-        last_trade = trade_df.iloc[-1]
-        if last_trade["TX"] == "Sell":
-            end_capital = last_trade["Cash"]
-        else:
-            end_capital = last_trade["Size"] * last_trade["Price"]
-    else:
-        end_capital = start_capital
-    return trade_df, end_capital
-
-
-def multi_run(df, start_capital, fee, min_ma=1, max_ma=50, step=1):
-    for slow_ma in range(1, max_ma + 1, step):
-        for fast_ma in range(1, slow_ma, step):
-            if fast_ma < min_ma or slow_ma == fast_ma or slow_ma == 1:
-                continue
-            try:
-                trade_df, end_capital = run(df, fast_ma, slow_ma, start_capital, fee)
-            except Exception as exc:
-                raise Exception(
-                    f"error running fast_ma: {fast_ma} slow_ma: {slow_ma} start_capital: {start_capital} fee: {fee}"
-                ) from exc
-            yield fast_ma, slow_ma, end_capital, len(trade_df)
 
 
 def main():
@@ -206,19 +113,28 @@ def main():
     fig["layout"].update(width=1024, height=768)
     st.plotly_chart(fig, config={"scrollZoom": True}, use_container_width=True)
 
+    discover_cols = st.columns(3)
+    min_fast_length = int(discover_cols[0].number_input("fast length", value=1))
+    max_slow_length = int(discover_cols[1].number_input("slow length", value=30))
+    interval = int(discover_cols[2].number_input("interval", value=1))
     if st.button("discover best parameters"):
         results = []
         i = 0
         progress_bar = st.progress(i, text="start")
-        min_ma = 1
-        max_ma = 30
-        step = 1
         expected_count = int(
-            ((max_ma - min_ma) / step) * ((max_ma - min_ma) / step - 1) * 2 / 3
+            ((max_slow_length - min_fast_length) / interval)
+            * ((max_slow_length - min_fast_length) / interval - 1)
+            * 2
+            / 3
         )
         increment = 1 / expected_count
         for fast_ma, slow_ma, end_capital, number_of_trades in multi_run(
-            df, start_capital, fee, min_ma=min_ma, max_ma=max_ma, step=step
+            df,
+            start_capital,
+            fee,
+            min_fast_length=min_fast_length,
+            max_slow_length=max_slow_length,
+            interval=interval,
         ):
             i += increment
             results.append(
