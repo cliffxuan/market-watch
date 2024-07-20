@@ -1,3 +1,4 @@
+import datetime as dt
 from typing import Literal, NamedTuple
 
 import numpy as np
@@ -34,21 +35,47 @@ def run(df, fast_ma, slow_ma, start_capital, fee):
     df["diff"] = df[fast_ma_name] - df[slow_ma_name]
     buy_dates = []
     sell_dates = []
+    order_open = False
     for d_0, d_1, d_2 in zip(df.index, df.index[1:], df.index[2:]):
-        if df.loc[d_0]["diff"] < 0 and df.loc[d_1]["diff"] > 0:
-            buy_dates.append(d_2)
-        elif df.loc[d_0]["diff"] > 0 and df.loc[d_1]["diff"] < 0:
-            sell_dates.append(d_2)
+        if df.loc[d_0]["diff"] < 0 and (
+            df.loc[d_1]["diff"] > 0
+            or (df.loc[d_1]["diff"] == 0 and df.loc[d_2]["diff"] > 0)
+        ):
+            if not order_open:
+                buy_dates.append(d_2)
+                order_open = True
+            else:
+                st.dataframe(df)
+                st.write([d_0, d_1, d_2])
+                raise ValueError("cannot open another order")
+        elif df.loc[d_0]["diff"] > 0 and (
+            df.loc[d_1]["diff"] < 0
+            or (df.loc[d_1]["diff"] == 0 and df.loc[d_2]["diff"] < 0)
+        ):
+            if order_open:
+                sell_dates.append(d_2)
+                order_open = False
+            elif buy_dates:
+                st.dataframe(
+                    df.loc[d_0 - dt.timedelta(days=20) : d_0 + dt.timedelta(days=20)]
+                )
+                st.write([d_0, d_1, d_2])
+                raise ValueError("no order to close")
+
     cash = start_capital
     trades = []
     if buy_dates and sell_dates:
-        if buy_dates[0] > sell_dates[0]:
-            # TODO how about buying before this?
-            sell_dates = sell_dates[1:]
+        # if buy_dates[0] > sell_dates[0]:
+        #     # TODO how about buying before this?
+        #     sell_dates = sell_dates[1:]
         # TODO how about trailing sell?
         for buy_date, sell_date in zip(buy_dates, sell_dates):
             if buy_date > sell_date:
                 raise ValueError(f"cannot buy on {buy_date} after sell on {sell_date}")
+            if trades and buy_date < trades[-1].date:
+                raise ValueError(
+                    f"buy date {buy_date} before the last trade at {trades[-1].date}"
+                )
             buy_price = df.loc[buy_date]["Price"]
             last_sell_price = trades[-1][2] if trades else buy_price
             buy_profit = (last_sell_price - buy_price) / last_sell_price  # TODO check
@@ -66,26 +93,43 @@ def run(df, fast_ma, slow_ma, start_capital, fee):
     trade_df = pd.DataFrame(
         trades, columns=["Date", "TX", "Price", "Profit", "Size", "Cash"]
     ).set_index(["Date"])
-    last_trade = trade_df.iloc[-1]
-    if last_trade["TX"] == "Sell":
-        end_capital = last_trade["Cash"]
+    if trades:
+        last_trade = trade_df.iloc[-1]
+        if last_trade["TX"] == "Sell":
+            end_capital = last_trade["Cash"]
+        else:
+            end_capital = last_trade["Size"] * last_trade["Price"]
     else:
-        end_capital = last_trade["Size"] * last_trade["Price"]
+        end_capital = start_capital
     return trade_df, end_capital
+
+
+def multi_run(df, start_capital, fee, min_ma=1, max_ma=50, step=1):
+    for slow_ma in range(1, max_ma + 1, step):
+        for fast_ma in range(1, slow_ma, step):
+            if fast_ma < min_ma or slow_ma == fast_ma or slow_ma == 1:
+                continue
+            try:
+                trade_df, end_capital = run(df, fast_ma, slow_ma, start_capital, fee)
+            except Exception as exc:
+                raise Exception(
+                    f"error running fast_ma: {fast_ma} slow_ma: {slow_ma} start_capital: {start_capital} fee: {fee}"
+                ) from exc
+            yield fast_ma, slow_ma, end_capital, len(trade_df)
 
 
 def main():
     st.markdown("# Back Testing Trading Strategy")
     input_cols = st.columns(3)
     ticker = input_cols[0].selectbox(
-        "yahoo finance ticker", options=["MSFT", "AAPL", "NVDA", "GOOGL"]
+        "yahoo finance ticker", options=["MSFT", "AAPL", "NVDA", "GOOGL", "BTC-USD"]
     )
     start_capital = input_cols[1].number_input("starting capital", value=10_000)
     fee = input_cols[2].number_input("fee %", value=0.2) / 100
     st.markdown("## Moving Average Cross-over")
     ma_col_0, ma_col_1 = st.columns(2)
-    fast_ma = int(ma_col_0.number_input("Fast Moving Average", value=10))
-    slow_ma = int(ma_col_1.number_input("Slow Moving Average", value=20))
+    fast_ma = int(ma_col_0.number_input("Fast Moving Average", value=5))
+    slow_ma = int(ma_col_1.number_input("Slow Moving Average", value=8))
     hist = get_hist(ticker)
     df = hist.loc[:, ["Close", "Volume"]]
     trade_df, end_capital = run(df, fast_ma, slow_ma, start_capital, fee)
@@ -161,6 +205,38 @@ def main():
     )
     fig["layout"].update(width=1024, height=768)
     st.plotly_chart(fig, config={"scrollZoom": True}, use_container_width=True)
+
+    if st.button("discover best parameters"):
+        results = []
+        i = 0
+        progress_bar = st.progress(i, text="start")
+        min_ma = 1
+        max_ma = 30
+        step = 1
+        expected_count = int(
+            ((max_ma - min_ma) / step) * ((max_ma - min_ma) / step - 1) * 2 / 3
+        )
+        increment = 1 / expected_count
+        for fast_ma, slow_ma, end_capital, number_of_trades in multi_run(
+            df, start_capital, fee, min_ma=min_ma, max_ma=max_ma, step=step
+        ):
+            i += increment
+            results.append(
+                {
+                    "fast_ma": fast_ma,
+                    "slow_ma": slow_ma,
+                    "end_capital": end_capital,
+                    "number_of_trades": number_of_trades,
+                }
+            )
+            progress_bar.progress(
+                min(i, 100),
+                f"fast: {fast_ma}, slow: {slow_ma}, end capital: {end_capital}",
+            )
+        if i < 100:
+            progress_bar.progress(100, "finish")
+        st.dataframe(pd.DataFrame(results))
+        st.text(f"expected count: {expected_count} count: {len(results)}")
 
 
 if __name__ == "__main__":
