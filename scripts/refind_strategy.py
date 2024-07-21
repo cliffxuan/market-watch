@@ -4,6 +4,7 @@ import pandas as pd
 import typer
 import yfinance as yf
 from market_watch.strategy import multi_run
+from rich import print
 
 app = typer.Typer()
 
@@ -71,6 +72,22 @@ def two_ma(
     print("\nfinished!")
     print(result_df.head(10))
     print(f"saved result to {output}")
+
+
+@app.command()
+def analyse(data_dir: str, head: int = 100):
+    data_dir_path = Path(data_dir)
+    if not data_dir_path.exists():
+        print(f'[red]data dir "{data_dir_path}" does not exist![/red]')
+    dfs = []
+    for f in data_dir_path.glob("*.csv"):
+        print(f"read file [green]{f}[/green]")
+        df = pd.read_csv(f)
+        dfs.append(df.drop(df.columns[0], axis=1))
+    df = pd.concat(dfs)
+    df = df.sort_values(by="profit", ascending=False).reset_index(drop=True)
+    pd.set_option("display.max_rows", head)
+    print(df.head(head))
 
 
 if __name__ == "__main__":
