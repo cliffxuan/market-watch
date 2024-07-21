@@ -24,32 +24,26 @@ def run(df, fast_ma, slow_ma, start_capital, fee):
     sell_dates = []
     order_open = False
     for d_0, d_1, d_2 in zip(df.index, df.index[1:], df.index[2:]):
-        if df.loc[d_0]["diff"] < 0 and (
-            df.loc[d_1]["diff"] > 0
-            or (df.loc[d_1]["diff"] == 0 and df.loc[d_2]["diff"] > 0)
+        if (
+            df.loc[d_0]["diff"] < 0
+            and df.loc[d_1]["diff"] >= 0
+            and df.loc[d_2]["diff"] > 0
+            and not order_open
         ):
-            if not order_open:
-                buy_dates.append(d_2)
-                order_open = True
-            else:
-                raise ValueError("cannot open another order")
-        elif df.loc[d_0]["diff"] > 0 and (
-            df.loc[d_1]["diff"] < 0
-            or (df.loc[d_1]["diff"] == 0 and df.loc[d_2]["diff"] < 0)
+            buy_dates.append(d_2)
+            order_open = True
+        elif (
+            df.loc[d_0]["diff"] > 0
+            and df.loc[d_1]["diff"] <= 0
+            and df.loc[d_2]["diff"] < 0
+            and order_open
         ):
-            if order_open:
-                sell_dates.append(d_2)
-                order_open = False
-            elif buy_dates:
-                raise ValueError("no order to close")
+            sell_dates.append(d_2)
+            order_open = False
 
     cash = start_capital
     trades = []
     if buy_dates and sell_dates:
-        # if buy_dates[0] > sell_dates[0]:
-        #     # TODO how about buying before this?
-        #     sell_dates = sell_dates[1:]
-        # TODO how about trailing sell?
         for buy_date, sell_date in zip(buy_dates, sell_dates):
             if buy_date > sell_date:
                 raise ValueError(f"cannot buy on {buy_date} after sell on {sell_date}")
