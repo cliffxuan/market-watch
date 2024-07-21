@@ -9,25 +9,24 @@ app = typer.Typer()
 
 
 PWD = Path(__file__).absolute().parent
+DATA_DIR = PWD.parent / "data"
 
 
 @app.command()
 def two_ma(
     ticker: str = "BTC-USD",
-    min_fast: int = 1,
+    min_slow: int = 1,
     max_slow: int = 20,
     interval: int = 1,
     period: str = "10y",
     start_capital: int = 10_000,
     fee: float = 0.002,
+    out_dir: str = str(DATA_DIR / "strategies" / "two-ma"),
 ):
     df = yf.Ticker(ticker).history(period=period)
-    total_iteration = 0
-    for slow_ma in range(1, max_slow + 1, interval):
-        for fast_ma in range(1, slow_ma, interval):
-            if fast_ma < min_fast or slow_ma == fast_ma or slow_ma == 1:
-                continue
-            total_iteration += 1
+    total_iteration = sum(
+        (slow_ma - 1) // interval for slow_ma in range(min_slow, max_slow + 1, interval)
+    )
     inc = 1 / total_iteration
     i = 0
     results = []
@@ -35,37 +34,35 @@ def two_ma(
         df,
         start_capital,
         fee,
-        min_fast_length=min_fast,
+        min_slow_length=min_slow,
         max_slow_length=max_slow,
         interval=interval,
     ):
         i += 1
-        # results.append(
-        #     {
-        #         "fast_ma": fast_ma,
-        #         "slow_ma": slow_ma,
-        #         "end_capital": end_capital,
-        #         "number_of_trades": number_of_trades,
-        #     }
-        # )
+        profit = end_capital / start_capital - 1
         results.append(
             [
                 fast_ma,
                 slow_ma,
+                profit,
                 end_capital,
                 number_of_trades,
             ]
         )
         print(
-            f"{i * inc * 100:.2f} %   fast: {fast_ma}, slow: {slow_ma}, profit: {end_capital / start_capital * 100:,.1f}%, #trades: {number_of_trades}",
+            f"{i * inc * 100:.2f} %  {i} / {total_iteration}"
+            f" fast: {fast_ma}, slow: {slow_ma}, profit: {profit * 100:,.1f}%,"
+            f" #trades: {number_of_trades}",
             end="\r",
         )
-    output = PWD / f"{ticker}-2ma.csv"
+    Path(out_dir).mkdir(exist_ok=True, parents=True)
+    output = Path(out_dir) / f"{ticker}-2ma-{min_slow:03}-{max_slow:03}.csv"
     result_df = pd.DataFrame(
         results,
         columns=[
             "fast_ma",
             "slow_ma",
+            "profit",
             "end_capital",
             "number_of_trades",
         ],

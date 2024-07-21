@@ -86,12 +86,10 @@ def run(df, fast_ma, slow_ma, start_capital, fee):
 
 
 def multi_run(
-    df, start_capital, fee, min_fast_length=1, max_slow_length=50, interval=1
+    df, start_capital, fee, min_slow_length=1, max_slow_length=50, interval=1
 ):
-    for slow_ma in range(1, max_slow_length + 1, interval):
+    for slow_ma in range(min_slow_length, max_slow_length + 1, interval):
         for fast_ma in range(1, slow_ma, interval):
-            if fast_ma < min_fast_length or slow_ma == fast_ma or slow_ma == 1:
-                continue
             try:
                 trade_df, end_capital = run(
                     df.copy(), fast_ma, slow_ma, start_capital, fee

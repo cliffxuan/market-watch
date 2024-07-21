@@ -113,26 +113,26 @@ def main():
     fig["layout"].update(width=1024, height=768)
     st.plotly_chart(fig, config={"scrollZoom": True}, use_container_width=True)
 
-    discover_cols = st.columns(3)
-    min_fast_length = int(discover_cols[0].number_input("fast length", value=1))
-    max_slow_length = int(discover_cols[1].number_input("slow length", value=30))
-    interval = int(discover_cols[2].number_input("interval", value=1))
-    if st.button("discover best parameters"):
+    refine_input_cols = st.columns(3)
+    min_slow_length = int(refine_input_cols[0].number_input("min slow length", value=1))
+    max_slow_length = int(
+        refine_input_cols[1].number_input("max slow length", value=30)
+    )
+    interval = int(refine_input_cols[2].number_input("interval", value=1))
+    if st.button("refine parameters"):
         results = []
         i = 0
         progress_bar = st.progress(i, text="start")
-        expected_count = int(
-            ((max_slow_length - min_fast_length) / interval)
-            * ((max_slow_length - min_fast_length) / interval - 1)
-            * 2
-            / 3
+        total_iteration = sum(
+            (slow_ma - 1) // interval
+            for slow_ma in range(min_slow_length, max_slow_length + 1, interval)
         )
-        increment = 1 / expected_count
+        increment = 1 / total_iteration
         for fast_ma, slow_ma, end_capital, number_of_trades in multi_run(
             df,
             start_capital,
             fee,
-            min_fast_length=min_fast_length,
+            min_slow_length=min_slow_length,
             max_slow_length=max_slow_length,
             interval=interval,
         ):
@@ -146,13 +146,13 @@ def main():
                 }
             )
             progress_bar.progress(
-                min(i, 100),
+                i,
                 f"fast: {fast_ma}, slow: {slow_ma}, end capital: {end_capital}",
             )
         if i < 100:
             progress_bar.progress(100, "finish")
         st.dataframe(pd.DataFrame(results))
-        st.text(f"expected count: {expected_count} count: {len(results)}")
+        st.text(f"expected count: {total_iteration} count: {len(results)}")
 
 
 if __name__ == "__main__":
