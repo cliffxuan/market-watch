@@ -56,7 +56,7 @@ def main():
         )
         cols[0].metric("buy & hold", f"{buy_and_hold:,.0f}")
         cols[1].metric(
-            "buy & hold profit", f"{buy_and_hold / start_capital * 100:,.2f} %"
+            "buy & hold profit", f"{(buy_and_hold / start_capital - 1) * 100:,.2f} %"
         )
 
         winning_trades = trade_df[trade_df["Profit"] > 0]
@@ -113,13 +113,15 @@ def main():
     fig["layout"].update(width=1024, height=768)
     st.plotly_chart(fig, config={"scrollZoom": True}, use_container_width=True)
 
+    st.divider()
+    st.markdown("## Refine Parameters")
     refine_input_cols = st.columns(3)
     min_slow_length = int(refine_input_cols[0].number_input("min slow length", value=1))
     max_slow_length = int(
         refine_input_cols[1].number_input("max slow length", value=30)
     )
     interval = int(refine_input_cols[2].number_input("interval", value=1))
-    if st.button("refine parameters"):
+    if st.button("start", type="primary"):
         results = []
         i = 0
         progress_bar = st.progress(i, text="start")
