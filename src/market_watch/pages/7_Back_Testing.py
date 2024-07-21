@@ -31,7 +31,7 @@ def main():
     ticker = input_cols[0].selectbox(
         "yahoo finance ticker", options=["MSFT", "AAPL", "NVDA", "GOOGL", "BTC-USD"]
     )
-    start_capital = input_cols[1].number_input("starting capital", value=10_000)
+    start_capital = input_cols[1].number_input("start capital", value=10_000)
     fee = input_cols[2].number_input("fee %", value=0.2) / 100
     st.markdown("## Moving Average Cross-over")
     ma_col_0, ma_col_1 = st.columns(2)
@@ -48,8 +48,8 @@ def main():
 
     with result_cols[1]:
         cols = st.columns(2)
-        cols[0].metric("final capital", f"{end_capital:,.0f}")
-        cols[1].metric("profit", f"{end_capital / start_capital * 100:,.2f} %")
+        cols[0].metric("end capital", f"{end_capital:,.0f}")
+        cols[1].metric("profit", f"{(end_capital / start_capital -1 )* 100:,.2f} %")
 
         buy_and_hold = (
             trade_df.iloc[0]["Size"] * df.iloc[-1]["Price"] + trade_df.iloc[0]["Cash"]
