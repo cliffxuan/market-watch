@@ -120,14 +120,14 @@ def main():
     max_slow_length = int(
         refine_input_cols[1].number_input("max slow length", value=30)
     )
-    interval = int(refine_input_cols[2].number_input("interval", value=1))
+    step = int(refine_input_cols[2].number_input("step", value=1))
     if st.button("start", type="primary"):
         results = []
         i = 0
         progress_bar = st.progress(i, text="start")
         total_iteration = sum(
-            (slow_ma - 1) // interval
-            for slow_ma in range(min_slow_length, max_slow_length + 1, interval)
+            (slow_ma - 1) // step
+            for slow_ma in range(min_slow_length, max_slow_length + 1, step)
         )
         increment = 1 / total_iteration
         for fast_ma, slow_ma, end_capital, number_of_trades in multi_run(
@@ -136,7 +136,7 @@ def main():
             fee,
             min_slow_length=min_slow_length,
             max_slow_length=max_slow_length,
-            interval=interval,
+            step=step,
         ):
             i += increment
             results.append(

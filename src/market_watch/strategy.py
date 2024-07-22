@@ -13,11 +13,15 @@ class Transaction(NamedTuple):
     cash: float
 
 
-def run(df, fast_ma, slow_ma, start_capital, fee):
+def run(df, fast_ma, slow_ma, start_capital, fee, fraction=False, ema=False):
     fast_ma_name = f"{fast_ma}MA"
     slow_ma_name = f"{slow_ma}MA"
-    df[fast_ma_name] = df["Close"].rolling(window=fast_ma).mean()
-    df[slow_ma_name] = df["Close"].rolling(window=slow_ma).mean()
+    if ema:
+        df[fast_ma_name] = df["Close"].ewm(span=fast_ma, adjust=False).mean()
+        df[slow_ma_name] = df["Close"].ewm(span=slow_ma, adjust=False).mean()
+    else:
+        df[fast_ma_name] = df["Close"].rolling(window=fast_ma).mean()
+        df[slow_ma_name] = df["Close"].rolling(window=slow_ma).mean()
     df["Price"] = df["Close"]
     df["diff"] = df[fast_ma_name] - df[slow_ma_name]
     buy_dates = []
@@ -56,8 +60,12 @@ def run(df, fast_ma, slow_ma, start_capital, fee):
             buy_profit = (last_sell_price - buy_price) / last_sell_price  # TODO check
             sell_price = df.loc[sell_date]["Price"]
             sell_profit = (sell_price - buy_price) / buy_price
-            size = np.floor(cash / (buy_price * (1 + fee)))
-            cash -= size * (buy_price * (1 + fee))
+            if fraction:
+                size = cash / (buy_price * (1 + fee))
+                cash = 0
+            else:
+                size = np.floor(cash / (buy_price * (1 + fee)))
+                cash -= size * (buy_price * (1 + fee))
             trades.append(
                 Transaction(buy_date, "Buy", buy_price, buy_profit, size, cash)
             )
@@ -80,13 +88,20 @@ def run(df, fast_ma, slow_ma, start_capital, fee):
 
 
 def multi_run(
-    df, start_capital, fee, min_slow_length=1, max_slow_length=50, interval=1
+    df,
+    start_capital,
+    fee,
+    min_slow_length=1,
+    max_slow_length=50,
+    step=1,
+    fraction=False,
+    ema=False,
 ):
-    for slow_ma in range(min_slow_length, max_slow_length + 1, interval):
-        for fast_ma in range(1, slow_ma, interval):
+    for slow_ma in range(min_slow_length, max_slow_length + 1, step):
+        for fast_ma in range(1, slow_ma, step):
             try:
                 trade_df, end_capital = run(
-                    df.copy(), fast_ma, slow_ma, start_capital, fee
+                    df.copy(), fast_ma, slow_ma, start_capital, fee, fraction, ema
                 )
             except Exception as exc:
                 raise Exception(
