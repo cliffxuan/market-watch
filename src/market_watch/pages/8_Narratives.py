@@ -41,6 +41,7 @@ NARRATIVES = {
             "name": "RNDR",
             "ticker": "RNDR-USD",
             "symbol": "RNDRUSD",
+            "exchange": "COINBASE",
         },
         {
             "name": "FET",
