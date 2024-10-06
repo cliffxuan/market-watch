@@ -107,7 +107,7 @@ NARRATIVES = {
             "symbol": "HNTUSD",
             "exchange": "COINBASE",
         },
-    ]
+    ],
 }
 
 NAME_TO_DATA = {coin["name"]: coin for coins in NARRATIVES.values() for coin in coins}
@@ -117,6 +117,34 @@ NAME_TO_DATA = {coin["name"]: coin for coins in NARRATIVES.values() for coin in 
 def get_hist(name: str) -> pd.DataFrame:
     ticker = yf.ticker.Ticker(name)
     return ticker.history(period="max")[["Open", "High", "Low", "Close", "Volume"]]  # type: ignore
+
+
+@st.cache_data(ttl="1h")
+def get_df() -> pd.DataFrame:
+    data = []
+    for narrative in NARRATIVES:
+        for coin in NARRATIVES[narrative]:
+            hist = get_hist(coin["ticker"])
+            ticker = yf.ticker.Ticker(coin["ticker"])
+            close = hist["Close"]
+            record = {
+                "Name": coin["name"],
+                "Narrative": narrative,
+                "Market Cap": ticker.info["marketCap"],
+                "Price": close.iloc[-1],
+                "ATH Date": close.idxmax().strftime("%Y-%m-%d"),  # type: ignore
+                "ATH %": (close.iloc[-1] / close.max() - 1).round(4) * 100,
+            }
+            for day in [1, 7, 30, 90, 180, 360]:
+                try:
+                    record[f"{day}d %"] = (
+                        close.iloc[-1] / close.iloc[-day - 1] - 1
+                    ).round(4) * 100
+                except IndexError:
+                    record[f"{day}d %"] = None
+            record["Historical Prices"] = close.values
+            data.append(record)
+    return pd.DataFrame(data)
 
 
 def display_coins(names: list[str]):
@@ -138,14 +166,12 @@ def main():
         spikethickness=1,
         spikecolor="grey",
     )
-    data = []
     debug = True
     debug = False
+    df = get_df()
     for narrative in NARRATIVES:
         for coin in NARRATIVES[narrative]:
             hist = get_hist(coin["ticker"])
-            ticker = yf.ticker.Ticker(coin["ticker"])
-            close = hist["Close"]
             if debug:
                 st.markdown(f"### {coin['name']}")
                 st.dataframe(hist)
@@ -154,26 +180,8 @@ def main():
                 fig.update_yaxes(**spike_setting)
                 fig.update_layout(hoverdistance=0)
                 st.plotly_chart(fig)
-            record = {
-                "Name": coin["name"],
-                "Narrative": narrative,
-                "Market Cap": ticker.info["marketCap"],
-                "Price": close.iloc[-1],
-                "ATH Date": close.idxmax().strftime("%Y-%m-%d"),  # type: ignore
-                "ATH %": (close.iloc[-1] / close.max() - 1).round(4) * 100,
-            }
-            for day in [1, 7, 30, 90, 180, 360]:
-                try:
-                    record[f"{day}d %"] = (
-                        close.iloc[-1] / close.iloc[-day - 1] - 1
-                    ).round(4) * 100
-                except IndexError:
-                    record[f"{day}d %"] = None
-            record["Historical Prices"] = close.values
-            data.append(record)
-    df = pd.DataFrame(data)
     cols = list(df)
-    df["Select"] = False
+    df["Select"] = st.session_state.setdefault("{__name__}.selected", [False] * len(df))
     selected = st.data_editor(
         df,
         column_order=["Select", *cols],
