@@ -85,6 +85,12 @@ NARRATIVES = {
             "ticker": "OM-USD",
             "symbol": "OMUSD",
         },
+        {
+            "name": "AXL",
+            "ticker": "AXL17799-USD",
+            "symbol": "AXLUSD",
+            "exchange": "COINBASE",
+        },
     ],
     "BASE": [
         {
