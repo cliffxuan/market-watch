@@ -6,41 +6,64 @@ authors = [
     { name = "Cliff Xuan", email = "cliff.xuan@gmail.com" }
 ]
 dependencies = [
-    "streamlit>=1.35.0",
-    "yfinance>=0.2.31",
-    "pandas>=2.0.3",
-    "PyPortfolioOpt>=1.5.5",
-    "matplotlib>=3.7.3",
-    "plotly>=5.17.0",
-    "streamlit-aggrid>=0.3.4.post3",
-    "orjson>=3.9.10",
-    "scipy>=1.10.1",
-    "statsmodels>=0.14.1",
-    "pydantic>=2.7.1",
+    "streamlit",
+    "yfinance",
+    "pandas",
+    "PyPortfolioOpt",
+    "matplotlib",
+    "plotly",
+    "streamlit-aggrid",
+    "orjson",
+    "scipy",
+    "statsmodels",
+    "pydantic",
 ]
 readme = "README.md"
-requires-python = ">= 3.8"
+requires-python = ">= 3.12"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.rye]
+[tool.uv]
 managed = true
 dev-dependencies = [
-    "black>=23.9.1",
-    "watchdog>=3.0.0",
-    "pygithub>=2.1.1",
-    "ipdb>=0.13.13",
-    "boto3>=1.34.113",
-    "typer>=0.12.3",
-    "awswrangler>=3.7.3",
-    "jupyterlab>=4.2.4",
+    "black",
+    "watchdog",
+    "pygithub",
+    "ipdb",
+    "boto3",
+    "typer",
+    "awswrangler",
+    "jupyterlab",
+    "ruff>=0.7.3",
 ]
-
-[tool.rye.scripts]
-app = "streamlit run src/market_watch/Market_Watch.py"
-etl = "python src/market_watch/etl"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.uv.workspace]
+members = ["market-watch"]
+
+[tool.ruff]
+target-version = "py312"
+src = ["src"]
+line-length = 88
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "PL", "C", "RUF", "PYI", "YTT", "N", "ANN", "A", "PYI", "Q", "TD", "ICN"]
+ignore = ["ANN101", "ANN102", "ANN204", "TD003"]
+ignore-init-module-imports = true
+fixable = ["I", "F401"]
+
+[tool.ruff.per-file-ignores]
+"*tests/*" = ["ANN001", "ANN201", "ANN401", "ANN202", "PLR0913", "PLR2004", "E501"]
+"*_test.py" = ["ANN001", "ANN201", "ANN401", "ANN202", "PLR0913", "PLR2004", "E501"]
+"conftest.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN401", "ANN202", "PLR0913", "PLR2004", "E501"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["src", "tests"]

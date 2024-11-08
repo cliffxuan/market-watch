@@ -1,6 +1,6 @@
 import streamlit as st
 
-from js_eval import get_user_agent, is_mobile
+from market_watch.js_eval import get_user_agent, is_mobile
 from market_watch.utils import display_tickers, set_page_config_once, trading_view
 
 

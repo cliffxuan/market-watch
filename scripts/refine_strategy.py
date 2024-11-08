@@ -1,11 +1,12 @@
 from pathlib import Path
 
-import market_watch.binance as bn
 import pandas as pd
 import typer
 import yfinance as yf
-from market_watch.strategy import multi_run
 from rich import print
+
+import market_watch.binance as bn
+from market_watch.strategy import multi_run
 
 app = typer.Typer()
 

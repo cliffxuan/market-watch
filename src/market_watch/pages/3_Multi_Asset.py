@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 import streamlit.components.v1 as components
+
 from market_watch.utils import DATA_DIR, set_page_config_once
 
 if __name__ == "__main__":

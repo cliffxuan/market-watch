@@ -1,6 +1,6 @@
-import zlib
 import gzip
 import json
+import zlib
 from pathlib import Path
 from timeit import timeit
 

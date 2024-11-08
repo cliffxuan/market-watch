@@ -10,6 +10,7 @@ import orjson
 import pandas as pd
 import yfinance as yf
 from github import Auth, Github
+
 from market_watch import yahoo_finance as yf2
 
 PWD = Path(__file__).parent.absolute()

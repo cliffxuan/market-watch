@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 import yfinance as yf
+
 from market_watch.utils import set_page_config_once, trading_view
 
 NARRATIVES = {
@@ -153,7 +154,7 @@ def get_df() -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-def display_coins(names: list[str]):
+def display_coins(names: list[str]) -> None:
     tabs = st.tabs(names)
     for i, name in enumerate(names):
         data = NAME_TO_DATA[name]
@@ -161,10 +162,10 @@ def display_coins(names: list[str]):
             trading_view(name=data["symbol"], exchange=data.get("exchange", "binance"))
 
 
-def main():
+def main() -> None:
     st.markdown("# Naratives")
 
-    spike_setting = dict(
+    spike_setting = dict(  # noqa: C408
         showspikes=True,
         spikemode="across",
         spikesnap="cursor",

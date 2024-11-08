@@ -22,7 +22,7 @@ DATA_DIR = PWD.parent.parent / "data"
 TICKERS = {"BTC": "BTC-USD", "SPX": "^SPX", "GOLD": "GC=F", "DXY": "DX-Y.NYB"}
 
 
-def set_page_config_once():
+def set_page_config_once() -> None:
     try:
         st.set_page_config(
             page_title="Market Watch",

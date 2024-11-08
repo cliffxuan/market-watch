@@ -4,9 +4,10 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 import yfinance as yf
+from plotly.subplots import make_subplots
+
 from market_watch.strategy import multi_run, run
 from market_watch.utils import set_page_config_once
-from plotly.subplots import make_subplots
 
 
 class Transaction(NamedTuple):
