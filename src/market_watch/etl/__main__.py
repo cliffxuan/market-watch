@@ -22,13 +22,15 @@ INFO_JSON_GZ = "info.json.gz"
 def get_tickers(local: bool = True) -> list[str]:
     if local:
         spx_symbols = pd.read_csv(DATA_DIR / "spx-500.csv")["Symbol"]
-        nasdqd_symbols = pd.read_csv(DATA_DIR / "nasdaq-100.csv")["Symbol"]
+        # csv file is from https://www.nasdaq.com/market-activity/quotes/nasdaq-ndx-index
+        nasdqd_symbols = pd.read_csv(DATA_DIR / "nasdaq-100.csv", sep="\t")["Symbol"]
     else:
         spx_symbols = pd.read_csv(
             "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
         )["Symbol"]
         nasdqd_symbols = pd.read_csv(
-            "https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/nasdaq-100.csv"
+            "https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/nasdaq-100.csv",
+            sep="\t",
         )["Symbol"]
     symbols = pd.concat([spx_symbols, nasdqd_symbols]).drop_duplicates()
     return symbols.apply(lambda x: x.replace(".", "-")).sort_values().to_list()

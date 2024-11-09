@@ -31,9 +31,11 @@ def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
     return df.loc[mask.any(axis=1)]
 
 
-def index_table(name, csv_file, cols):
+def index_table(
+    name: str, csv_file: str, cols: list[str], opts: dict | None = None
+) -> None:
     st.markdown(f"# {name}")
-    constituents = pd.read_csv(DATA_DIR / csv_file)
+    constituents = pd.read_csv(DATA_DIR / csv_file, **(opts or {}))
     info = pd.DataFrame.from_dict(
         {
             key: {
