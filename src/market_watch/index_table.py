@@ -41,6 +41,7 @@ def index_table(
             key: {
                 "Exchange": val["price"]["exchange"],
                 "Market Cap": val["price"]["marketCap"]["raw"],
+                "Volume": val["summaryDetail"]["volume"]["raw"],
             }
             for key, val in get_tickers_info().items()
         },
