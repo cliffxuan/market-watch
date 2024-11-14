@@ -82,7 +82,7 @@ def get_info_json(local: bool = True) -> dict[str, dict]:
     )
 
 
-def commit(file_path: Path, message: str = ""):
+def commit(file_path: Path, message: str = "") -> None:
     with Github(auth=Auth.Token(os.environ["GITHUB_AUTH_TOKEN"])) as g:
         repo = g.get_repo("cliffxuan/market-watch")
         contents = repo.get_contents(f"data/{HIST_PARQUET}", ref="main")
@@ -113,7 +113,7 @@ def handler(pd: "pipedream"):  # type: ignore  # noqa
     return {"succeed": True, "message": message}
 
 
-def argument_parser():
+def argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="etl")
     parser.add_argument("--commit", "-c", action="store_true", help="commit to github")
     parser.add_argument("--all", "-a", action="store_true", help="get all")
@@ -122,7 +122,7 @@ def argument_parser():
     return parser
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> None:
     args = argument_parser().parse_args(argv)
     if args.all or args.price:
         hist_file_path = DATA_DIR / HIST_PARQUET
