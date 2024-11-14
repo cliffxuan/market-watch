@@ -1,5 +1,7 @@
+import datetime as dt
 import gzip
 import json
+import os
 from functools import reduce
 from pathlib import Path
 from string import Template
@@ -96,14 +98,20 @@ def trading_view(
 
 @st.cache_data(ttl="1h")
 def get_tickers_info() -> dict:
-    with open(DATA_DIR / "info.json.gz", "rb") as f:
-        return orjson.loads(gzip.decompress(f.read()))
+    file_path = DATA_DIR / "info.json.gz"
+
+    creation_time = dt.datetime.fromtimestamp(
+        os.path.getctime(file_path), tz=dt.timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M%z")
+    with open(file_path, "rb") as f:
+        data = orjson.loads(gzip.decompress(f.read()))
+    return {"data": data, "creation_time": creation_time}
 
 
 @st.cache_data(ttl="1h")
 def get_data(symbol: str) -> dict:
     try:
-        data = get_tickers_info()[symbol.upper()]
+        data = get_tickers_info()["data"][symbol.upper()]
     except KeyError:
         try:
             data = yahoo_finance.get_info(

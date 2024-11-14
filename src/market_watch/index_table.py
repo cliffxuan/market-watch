@@ -36,6 +36,7 @@ def index_table(
 ) -> None:
     st.markdown(f"# {name}")
     constituents = pd.read_csv(DATA_DIR / csv_file, **(opts or {}))
+    tickers_info = get_tickers_info()
     info = pd.DataFrame.from_dict(
         {
             key: {
@@ -43,7 +44,7 @@ def index_table(
                 "Market Cap": val["price"]["marketCap"]["raw"],
                 "Volume": val["summaryDetail"]["volume"]["raw"],
             }
-            for key, val in get_tickers_info().items()
+            for key, val in tickers_info["data"].items()
         },
         orient="index",
     )
@@ -70,6 +71,7 @@ def index_table(
     constituents = search(constituents, query)
     cols = list(constituents)
     constituents["Select"] = False
+    st.markdown(f"last updated: {tickers_info['creation_time']}")
     constituents = st.data_editor(
         constituents,
         column_order=["Select", *cols],
