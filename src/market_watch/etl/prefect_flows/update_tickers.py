@@ -5,7 +5,8 @@ from pathlib import Path
 from prefect import flow
 
 PWD = Path(__file__).absolute().parent
-script = PWD / "../scripts" / "trim-git-histroy.sh"
+PROJECT_DIR = PWD.parent.parent.parent.parent
+script = PROJECT_DIR / "scripts" / "trim-git-histroy.sh"
 
 
 def run_shell_command(shell_command: list[str], env_vars: dict | None = None) -> None:
