@@ -4,12 +4,23 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR/.." || exit 1
 
-FILE="data/hist.parquet"
+FILES=(
+  "data/hist.parquet"
+  "data/info.json.gz"
+)
+
+precheck() {
+  if ! git diff-index --quiet HEAD --; then
+    echo "There are uncommitted changes. Please commit or stash them before running this script."
+    exit 1
+  fi
+}
 
 remove() {
-  echo "remove $FILE from history"
-  git filter-branch -f --index-filter "git rm -rf --cached --ignore-unmatch $FILE" HEAD
-  git filter-branch -f --index-filter "git rm -rf --cached --ignore-unmatch data/info.json.gz" HEAD
+  for FILE in "${FILES[@]}"; do
+    echo "remove $FILE from history"
+    git filter-branch -f --index-filter "git rm -rf --cached --ignore-unmatch $FILE" HEAD
+  done
   git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
 }
 
@@ -18,7 +29,9 @@ fetch() {
 }
 
 commit() {
-  git add $FILE
+  for FILE in "${FILES[@]}"; do
+    git add "$FILE"
+  done
   git add data/info.json.gz
   git commit -m 'trimmed data and refetched'
 }
@@ -34,6 +47,7 @@ clean() {
 }
 
 all() {
+  precheck
   remove
   fetch
   commit
@@ -41,7 +55,7 @@ all() {
   clean
 }
 
-while getopts ":cfhr" opt; do
+while getopts ":cfhpr" opt; do
   case "$opt" in
   c)
     clean
@@ -49,6 +63,10 @@ while getopts ":cfhr" opt; do
     ;;
   f)
     fetch
+    exit 0
+    ;;
+  p)
+    precheck
     exit 0
     ;;
   r)

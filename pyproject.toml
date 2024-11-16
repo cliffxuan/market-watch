@@ -37,6 +37,7 @@ dev-dependencies = [
     "awswrangler",
     "jupyterlab",
     "ruff>=0.7.3",
+    "prefect>=3.1.2",
 ]
 
 [tool.hatch.metadata]
