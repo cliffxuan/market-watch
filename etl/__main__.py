@@ -14,7 +14,8 @@ from github import Auth, Github
 from market_watch import yahoo_finance as yf2
 
 PWD = Path(__file__).parent.absolute()
-DATA_DIR = PWD.parent.parent.parent / "data"
+DATA_DIR = PWD.parent / "data"
+assert DATA_DIR.exists()
 HIST_PARQUET = "hist.parquet"
 INFO_JSON_GZ = "info.json.gz"
 
