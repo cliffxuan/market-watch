@@ -4,14 +4,11 @@ from pathlib import Path
 
 from prefect import flow
 
-PWD = Path(__file__).absolute().parent
-PROJECT_DIR = PWD.parent.parent.parent.parent
-script = PROJECT_DIR / "scripts" / "trim-git-histroy.sh"
-
 
 def run_shell_command(shell_command: list[str], env_vars: dict | None = None) -> None:
     env = os.environ | (env_vars or {})
 
+    print(f'run shell command {" ".join(shell_command)} with env_vars: {env_vars}')
     process = subprocess.Popen(
         shell_command,
         stdout=subprocess.PIPE,
@@ -29,7 +26,7 @@ def run_shell_command(shell_command: list[str], env_vars: dict | None = None) ->
 @flow(name="Update Tickers", log_prints=True)
 def update_tickers() -> None:
     env_vars = {"GIT_SSH_COMMAND": f"ssh -i {Path.home() / '.ssh' / 'oc_cloud'}"}
-    run_shell_command([str(script)], env_vars)
+    run_shell_command(["ssh", "git@github.com"], env_vars)
 
 
 def main() -> None:
