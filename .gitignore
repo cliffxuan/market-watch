@@ -1,2 +1,3 @@
 !data/info.json.gz
 data/info.json
+etl/prefect-server/data/
