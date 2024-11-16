@@ -47,12 +47,7 @@ clean() {
 }
 
 all() {
-  precheck
-  remove
-  fetch
-  commit
-  push
-  clean
+  precheck && remove && fetch && commit && push && clean
 }
 
 while getopts ":cfhpr" opt; do
