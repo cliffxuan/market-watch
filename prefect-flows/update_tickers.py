@@ -29,3 +29,11 @@ def run_shell_command(shell_command: list[str], env_vars: dict | None = None) ->
 def update_tickers() -> None:
     env_vars = {"GIT_SSH_COMMAND": f"ssh -i {Path.home() / '.ssh' / 'oc_cloud'}"}
     run_shell_command([str(script)], env_vars)
+
+
+def main() -> None:
+    update_tickers()
+
+
+if __name__ == "__main__":
+    main()
