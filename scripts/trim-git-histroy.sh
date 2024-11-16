@@ -25,7 +25,7 @@ remove() {
 }
 
 fetch() {
-  ./.venv/bin/python src/market_watch/etl/__main__.py --all
+  ./.venv/bin/python etl/__main__.py --all
 }
 
 commit() {
