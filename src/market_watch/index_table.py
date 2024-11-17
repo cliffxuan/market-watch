@@ -30,10 +30,8 @@ def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
     return df.loc[mask.any(axis=1)]
 
 
-def index_table(name: str, symbols: list[str]) -> None:
-    st.markdown(f"# {name}")
+def get_info(symbols: list[str]):
     tickers_info = get_tickers_info()
-
     # Create DataFrame from tickers info
     constituents = pd.DataFrame.from_dict(
         {
@@ -63,11 +61,17 @@ def index_table(name: str, symbols: list[str]) -> None:
         1460: "4y",
     }
     for period, label in periods.items():
-        constituents[label] = (close.iloc[-1] / close.iloc[-period] * 100 - 100).round(
-            2
-        )
+        constituents[f"{label}%"] = (
+            close.iloc[-1] / close.iloc[-period] * 100 - 100
+        ).round(2)
 
     constituents = rank_by_market_cap(constituents)
+    return constituents, tickers_info["creation_time"]
+
+
+def index_table(name: str, symbols: list[str]) -> None:
+    constituents, creation_time = get_info(symbols)
+    st.markdown(f"# {name}")
     st.markdown(f"Select {name} constituents to build a portfolio")
     query = st.columns(2)[0].text_input(
         "search",
@@ -77,7 +81,7 @@ def index_table(name: str, symbols: list[str]) -> None:
     constituents = search(constituents, query)
     cols = list(constituents)
     constituents["Select"] = False
-    st.markdown(f"last updated: {tickers_info['creation_time']}")
+    st.markdown(f"last updated: {creation_time}")
     constituents = st.data_editor(
         constituents,
         column_order=["Select", *cols],
