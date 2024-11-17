@@ -3,7 +3,6 @@ import pandas as pd
 import streamlit as st
 
 from market_watch.utils import (
-    DATA_DIR,
     display_tickers,
     get_spx_hists,
     get_tickers_info,
@@ -31,15 +30,13 @@ def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
     return df.loc[mask.any(axis=1)]
 
 
-def index_table(
-    name: str, csv_file: str, cols: list[str], opts: dict | None = None
-) -> None:
+def index_table(name: str, constituents: pd.DataFrame) -> None:
     st.markdown(f"# {name}")
-    constituents = pd.read_csv(DATA_DIR / csv_file, **(opts or {}))
     tickers_info = get_tickers_info()
     info = pd.DataFrame.from_dict(
         {
             key: {
+                "Name": val["price"]["shortName"],
                 "Exchange": val["price"]["exchange"],
                 "Market Cap": val["price"]["marketCap"]["raw"],
                 "Volume": val["summaryDetail"]["volume"]["raw"],
@@ -48,7 +45,7 @@ def index_table(
         },
         orient="index",
     )
-    constituents = constituents[cols].join(info, on="Symbol")
+    constituents = constituents.join(info, on="Symbol")
     close = get_spx_hists()["Close"]
     constituents = constituents.join(
         (close.iloc[-1] / close.iloc[-2] * 100 - 100).round(2).to_frame("1d %"),
