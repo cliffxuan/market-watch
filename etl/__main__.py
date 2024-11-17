@@ -37,7 +37,37 @@ def get_tickers(local: bool = True) -> list[str]:
 
 
 def get_hists(local: bool = True) -> pd.DataFrame:
-    return yf.Tickers(get_tickers(local)).history(period="10y")
+    tickers = get_tickers(local)
+    unique_columns = [
+        "Close",
+        "Dividends",
+        "High",
+        "Low",
+        "Open",
+        "Stock Splits",
+        "Volume",
+    ]
+    combined_data = {}
+    for i, ticker in enumerate(tickers):
+        print(
+            f"{str(i).zfill(len(str(len(tickers))))} / {len(tickers)} {ticker}",
+            end="\r",
+        )
+        try:
+            df = yf.Ticker(ticker).history(period="10y", raise_errors=True)
+        except yf.exceptions.YFInvalidPeriodError:  # type: ignore
+            df = yf.Ticker(ticker).history(period="max", raise_errors=False)
+        for col in unique_columns:
+            combined_data[(col, ticker)] = df[col]
+
+    columns = pd.MultiIndex.from_tuples(
+        [(col, ticker) for ticker in tickers for col in unique_columns],
+        names=["Price", "Ticker"],
+    )
+
+    # Create the combined DataFrame
+    combined_df = pd.DataFrame(combined_data, columns=columns)
+    return combined_df
 
 
 def get_info(local: bool = True) -> pd.DataFrame:
