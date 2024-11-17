@@ -34,7 +34,7 @@ def update_tickers() -> None:
 
 
 def main() -> None:
-    update_tickers()
+    update_tickers.serve(name="update_tickers daily", cron="0 8 * * *")
 
 
 if __name__ == "__main__":
