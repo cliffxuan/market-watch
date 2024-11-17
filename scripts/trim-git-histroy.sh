@@ -29,10 +29,7 @@ fetch() {
 }
 
 commit() {
-  for FILE in "${FILES[@]}"; do
-    git add "$FILE"
-    git add "$FILE.timestamp"
-  done
+  git add data/
   git commit -m 'trimmed data and refetched'
 }
 

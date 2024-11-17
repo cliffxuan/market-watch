@@ -1,5 +1,3 @@
-import datetime as dt
-import gzip
 import json
 from functools import reduce
 from pathlib import Path
@@ -7,7 +5,6 @@ from string import Template
 
 import cvxpy as cp
 import numpy as np
-import orjson
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -15,7 +12,7 @@ import streamlit.components.v1 as components
 import yfinance as yf
 from pypfopt import EfficientFrontier, expected_returns
 
-from market_watch import yahoo_finance
+from market_watch import ticker_data, yahoo_finance
 
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent.parent / "data"
@@ -97,18 +94,7 @@ def trading_view(
 
 @st.cache_data(ttl="1h")
 def get_tickers_info() -> dict:
-    file_path = DATA_DIR / "info.json.gz"
-
-    try:
-        with open(f"{file_path}.timestamp", "r") as f:
-            creation_time = dt.datetime.fromisoformat(f.read()).strftime(
-                "%Y-%m-%dT%H:%M%z"
-            )
-    except Exception:
-        creation_time = None
-    with open(file_path, "rb") as f:
-        data = orjson.loads(gzip.decompress(f.read()))
-    return {"data": data, "creation_time": creation_time}
+    return ticker_data.get_tickers_info()
 
 
 @st.cache_data(ttl="1h")
@@ -137,7 +123,7 @@ def get_data(symbol: str) -> dict:
 @st.cache_data(ttl="1h")
 def get_hist(ticker: str) -> pd.DataFrame:
     try:
-        df = get_spx_hists()
+        df = get_tickers_hist()
         hist = pd.DataFrame({col: df[col][ticker] for col in ["Close", "Volume"]})
     except KeyError:
         hist = yf.Ticker(ticker).history(period="10y")
@@ -146,7 +132,7 @@ def get_hist(ticker: str) -> pd.DataFrame:
 
 
 @st.cache_data(ttl="1h")
-def get_spx_hists() -> pd.DataFrame:
+def get_tickers_hist() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "hist.parquet")
 
 

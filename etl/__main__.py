@@ -12,6 +12,7 @@ import yfinance as yf
 from github import Auth, Github
 
 from market_watch import yahoo_finance as yf2
+from market_watch.ticker_data import get_tickers_info, rank_by_market_cap
 
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent / "data"
@@ -19,20 +20,27 @@ assert DATA_DIR.exists()
 HIST_PARQUET = "hist.parquet"
 INFO_JSON_GZ = "info.json.gz"
 
+COLLECTIONS = [
+    "spx-500",
+    # csv file is from https://www.nasdaq.com/market-activity/quotes/nasdaq-ndx-index
+    "nasdaq-100",
+]
+
 
 def get_tickers(local: bool = True) -> list[str]:
     if local:
-        spx_symbols = pd.read_csv(DATA_DIR / "raw" / "spx-500.csv")["Symbol"]
-        # csv file is from https://www.nasdaq.com/market-activity/quotes/nasdaq-ndx-index
-        nasdqd_symbols = pd.read_csv(DATA_DIR / "raw" / "nasdaq-100.csv")["Symbol"]
+        dfs = [
+            pd.read_csv(DATA_DIR / "raw" / f"{collection}.csv")["Symbol"]
+            for collection in COLLECTIONS
+        ]
     else:
-        spx_symbols = pd.read_csv(
-            "https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/raw/spx-500.csv"
-        )["Symbol"]
-        nasdqd_symbols = pd.read_csv(
-            "https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/raw/nasdaq-100.csv"
-        )["Symbol"]
-    symbols = pd.concat([spx_symbols, nasdqd_symbols]).drop_duplicates()
+        dfs = [
+            pd.read_csv(
+                f"https://raw.githubusercontent.com/cliffxuan/market-watch/main/data/raw/{collection}.csv"
+            )["Symbol"]
+            for collection in COLLECTIONS
+        ]
+    symbols = pd.concat(dfs).drop_duplicates()
     return symbols.apply(lambda x: x.replace(".", "-")).sort_values().to_list()
 
 
@@ -144,29 +152,73 @@ def handler(pd: "pipedream"):  # type: ignore  # noqa
     return {"succeed": True, "message": message}
 
 
+def calculate_returns(
+    info: dict, hists: pd.DataFrame, symbols: list[str]
+) -> pd.DataFrame:
+    # Create DataFrame from tickers info
+    constituents = pd.DataFrame.from_dict(
+        {
+            symbol: {
+                "Symbol": symbol,
+                "Name": val["price"]["shortName"],
+                "Market Cap": val["price"]["marketCap"]["raw"],
+                "Volume": val["summaryDetail"]["volume"]["raw"],
+            }
+            for symbol in symbols
+            if (val := info["data"].get(symbol))
+        },
+        orient="index",
+    )
+
+    close = hists["Close"]
+
+    periods = {
+        1: "1d",
+        7: "7d",
+        30: "30d",
+        90: "90d",
+        180: "6mo",
+        365: "1y",
+        730: "2y",
+        1095: "3y",
+        1460: "4y",
+    }
+    for period, label in periods.items():
+        constituents[f"{label}%"] = (
+            close.iloc[-1] / close.iloc[-period] * 100 - 100
+        ).round(2)
+
+    constituents = rank_by_market_cap(constituents)
+    return constituents
+
+
 def argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="etl")
     parser.add_argument("--commit", "-c", action="store_true", help="commit to github")
     parser.add_argument("--all", "-a", action="store_true", help="get all")
     parser.add_argument("--price", "-p", action="store_true", help="get price")
     parser.add_argument("--info", "-i", action="store_true", help="get info")
+    parser.add_argument(
+        "--returns", "-r", action="store_true", help="calculate returns"
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
     args = argument_parser().parse_args(argv)
     timestamp = dt.datetime.now().isoformat()
+    hist_file_path = DATA_DIR / HIST_PARQUET
+    info_file_path = DATA_DIR / INFO_JSON_GZ
     if args.all or args.price:
-        hist_file_path = DATA_DIR / HIST_PARQUET
         print(f"get hist data and write to {hist_file_path}")
-        get_hists().to_parquet(hist_file_path, compression="gzip")
+        hists = get_hists()
+        hists.to_parquet(hist_file_path, compression="gzip")
         with open(f"{hist_file_path}.timestamp", "w") as f:
             f.write(timestamp)
         if args.commit:
             commit(hist_file_path)
 
     if args.all or args.info:
-        info_file_path = DATA_DIR / INFO_JSON_GZ
         print(f"get info data and write to {info_file_path}")
         info = get_info_json()
         with open(info_file_path, "wb") as f:
@@ -175,6 +227,24 @@ def main(argv: list[str] | None = None) -> None:
             f.write(timestamp)
         if args.commit:
             commit(info_file_path)
+
+    if args.all or args.returns:
+        info = get_tickers_info()
+        for collection in COLLECTIONS:
+            df = calculate_returns(
+                info=info,
+                hists=pd.read_parquet(hist_file_path),
+                symbols=pd.read_csv(DATA_DIR / "raw" / f"{collection}.csv")[
+                    "Symbol"
+                ].tolist(),
+            )
+            for file in (
+                "latest.csv",
+                f'{info["creation_time"].strftime("%Y-%m-%d")}.csv',
+            ):
+                path = DATA_DIR / collection / file
+                print(f"write to {path}")
+                df.to_csv(path)
 
 
 if __name__ == "__main__":

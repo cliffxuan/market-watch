@@ -2,21 +2,12 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from market_watch.ticker_data import rank_by_market_cap
 from market_watch.utils import (
     display_tickers,
-    get_spx_hists,
+    get_tickers_hist,
     get_tickers_info,
 )
-
-
-def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
-    constituents = constituents.sort_values(
-        by=["Market Cap"], ascending=False
-    ).reset_index(drop=True)
-    goog = constituents.Symbol.loc[lambda x: x.isin(["GOOGL", "GOOG"])]
-    rank = constituents.index.map(lambda n: n + 1 if n <= goog.index.min() else n)
-    constituents.insert(0, "Rank", rank)
-    return constituents
 
 
 def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
@@ -47,7 +38,7 @@ def get_info(symbols: list[str]):
         orient="index",
     )
 
-    close = get_spx_hists()["Close"]
+    close = get_tickers_hist()["Close"]
 
     periods = {
         1: "1d",
@@ -81,7 +72,7 @@ def index_table(name: str, symbols: list[str]) -> None:
     constituents = search(constituents, query)
     cols = list(constituents)
     constituents["Select"] = False
-    st.markdown(f"last updated: {creation_time}")
+    st.markdown(f"last updated: {creation_time.strftime('%Y-%m-%dT%H:%M%z')}")
     constituents = st.data_editor(
         constituents,
         column_order=["Select", *cols],
