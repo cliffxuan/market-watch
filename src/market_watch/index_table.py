@@ -51,7 +51,17 @@ def index_table(name: str, symbols: list[str]) -> None:
 
     close = get_spx_hists()["Close"]
 
-    periods = {1: "1d", 7: "7d", 30: "30d", 90: "90d", 180: "6mo", 365: "1y"}
+    periods = {
+        1: "1d",
+        7: "7d",
+        30: "30d",
+        90: "90d",
+        180: "6mo",
+        365: "1y",
+        730: "2y",
+        1095: "3y",
+        1460: "4y",
+    }
     for period, label in periods.items():
         constituents[label] = (close.iloc[-1] / close.iloc[-period] * 100 - 100).round(
             2
