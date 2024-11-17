@@ -33,6 +33,8 @@ def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
 def index_table(name: str, symbols: list[str]) -> None:
     st.markdown(f"# {name}")
     tickers_info = get_tickers_info()
+
+    # Create DataFrame from tickers info
     constituents = pd.DataFrame.from_dict(
         {
             symbol: {
@@ -46,18 +48,31 @@ def index_table(name: str, symbols: list[str]) -> None:
         },
         orient="index",
     )
+
     close = get_spx_hists()["Close"]
-    constituents = constituents.join(
-        (close.iloc[-1] / close.iloc[-2] * 100 - 100).round(2).to_frame("1d %"),
-        on="Symbol",
+
+    # Calculate daily and weekly percentage changes
+    constituents = (
+        constituents.join(
+            (close.iloc[-1] / close.iloc[-2] * 100 - 100).round(2).to_frame("1d %"),
+            on="Symbol",
+        )
+        .join(
+            (close.iloc[-1] / close.iloc[-6] * 100 - 100).round(2).to_frame("7d %"),
+            on="Symbol",
+        )
+        .join(
+            (close.iloc[-1] / close.iloc[-29] * 100 - 100).round(2).to_frame("30d %"),
+            on="Symbol",
+        )
     )
+
+    # Reorder columns
     constituents.insert(2, "Market Cap", constituents.pop("Market Cap"))
     constituents.insert(3, "1d %", constituents.pop("1d %"))
-    constituents = constituents.join(
-        (close.iloc[-1] / close.iloc[-6] * 100 - 100).round(2).to_frame("7d %"),
-        on="Symbol",
-    )
     constituents.insert(4, "7d %", constituents.pop("7d %"))
+    constituents.insert(5, "30d %", constituents.pop("30d %"))
+
     constituents = rank_by_market_cap(constituents)
     st.markdown(f"Select {name} constituents to build a portfolio")
     query = st.columns(2)[0].text_input(
