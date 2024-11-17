@@ -155,10 +155,13 @@ def argument_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = argument_parser().parse_args(argv)
+    timestamp = dt.datetime.now().isoformat()
     if args.all or args.price:
         hist_file_path = DATA_DIR / HIST_PARQUET
         print(f"get hist data and write to {hist_file_path}")
         get_hists().to_parquet(hist_file_path, compression="gzip")
+        with open(f"{hist_file_path}.timestamp", "w") as f:
+            f.write(timestamp)
         if args.commit:
             commit(hist_file_path)
 
@@ -168,6 +171,8 @@ def main(argv: list[str] | None = None) -> None:
         info = get_info_json()
         with open(info_file_path, "wb") as f:
             f.write(gzip.compress(orjson.dumps(info, option=orjson.OPT_INDENT_2)))
+        with open(f"{info_file_path}.timestamp", "w") as f:
+            f.write(timestamp)
         if args.commit:
             commit(info_file_path)
 
