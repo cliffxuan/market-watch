@@ -51,27 +51,11 @@ def index_table(name: str, symbols: list[str]) -> None:
 
     close = get_spx_hists()["Close"]
 
-    # Calculate daily and weekly percentage changes
-    constituents = (
-        constituents.join(
-            (close.iloc[-1] / close.iloc[-2] * 100 - 100).round(2).to_frame("1d %"),
-            on="Symbol",
+    periods = {1: "1d", 7: "7d", 30: "30d", 90: "90d", 180: "6mo", 365: "1y"}
+    for period, label in periods.items():
+        constituents[label] = (close.iloc[-1] / close.iloc[-period] * 100 - 100).round(
+            2
         )
-        .join(
-            (close.iloc[-1] / close.iloc[-6] * 100 - 100).round(2).to_frame("7d %"),
-            on="Symbol",
-        )
-        .join(
-            (close.iloc[-1] / close.iloc[-29] * 100 - 100).round(2).to_frame("30d %"),
-            on="Symbol",
-        )
-    )
-
-    # Reorder columns
-    constituents.insert(2, "Market Cap", constituents.pop("Market Cap"))
-    constituents.insert(3, "1d %", constituents.pop("1d %"))
-    constituents.insert(4, "7d %", constituents.pop("7d %"))
-    constituents.insert(5, "30d %", constituents.pop("30d %"))
 
     constituents = rank_by_market_cap(constituents)
     st.markdown(f"Select {name} constituents to build a portfolio")
