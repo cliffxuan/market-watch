@@ -244,7 +244,7 @@ def main(argv: list[str] | None = None) -> None:
             ):
                 path = DATA_DIR / collection / file
                 print(f"write to {path}")
-                df.to_csv(path)
+                df.to_csv(path, index=False)
 
 
 if __name__ == "__main__":
