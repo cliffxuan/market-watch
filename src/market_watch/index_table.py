@@ -26,8 +26,10 @@ def get_info(
     tickers_info: dict | None = None,
     close_prices: pd.DataFrame | None = None,
 ):
-    tickers_info = tickers_info or get_tickers_info()
-    close_prices = close_prices or get_tickers_hist()["Close"]
+    tickers_info = tickers_info if tickers_info is not None else get_tickers_info()
+    close_prices = (
+        close_prices if close_prices is not None else get_tickers_hist()["Close"]
+    )
     # Create DataFrame from tickers info
     constituents = pd.DataFrame.from_dict(
         {

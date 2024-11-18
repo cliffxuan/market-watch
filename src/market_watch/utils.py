@@ -126,7 +126,10 @@ def get_hist(ticker: str) -> pd.DataFrame:
         df = get_tickers_hist()
         hist = pd.DataFrame({col: df[col][ticker] for col in ["Close", "Volume"]})
     except KeyError:
-        hist = yf.Ticker(ticker).history(period="10y")
+        try:
+            hist = yf.Ticker(ticker).history(period="10y", raise_errors=True)
+        except yf.exceptions.YFInvalidPeriodError:  # type: ignore
+            hist = yf.Ticker(ticker).history(period="max")
     hist["LocalDate"] = hist.index.date
     return hist.set_index(["LocalDate"])
 
