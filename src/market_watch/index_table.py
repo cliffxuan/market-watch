@@ -21,8 +21,13 @@ def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
     return df.loc[mask.any(axis=1)]
 
 
-def get_info(symbols: list[str]):
-    tickers_info = get_tickers_info()
+def get_info(
+    symbols: list[str],
+    tickers_info: dict | None = None,
+    close_prices: pd.DataFrame | None = None,
+):
+    tickers_info = tickers_info or get_tickers_info()
+    close_prices = close_prices or get_tickers_hist()["Close"]
     # Create DataFrame from tickers info
     constituents = pd.DataFrame.from_dict(
         {
@@ -38,8 +43,6 @@ def get_info(symbols: list[str]):
         orient="index",
     )
 
-    close = get_tickers_hist()["Close"]
-
     periods = {
         1: "1d",
         7: "7d",
@@ -53,15 +56,20 @@ def get_info(symbols: list[str]):
     }
     for period, label in periods.items():
         constituents[f"{label}%"] = (
-            close.iloc[-1] / close.iloc[-period] * 100 - 100
+            close_prices.iloc[-1] / close_prices.iloc[-period] * 100 - 100
         ).round(2)
 
     constituents = rank_by_market_cap(constituents)
     return constituents, tickers_info["creation_time"]
 
 
-def index_table(name: str, symbols: list[str]) -> None:
-    constituents, creation_time = get_info(symbols)
+def index_table(
+    name: str,
+    symbols: list[str],
+    tickers_info: dict | None = None,
+    close_prices: pd.DataFrame | None = None,
+) -> None:
+    constituents, creation_time = get_info(symbols, tickers_info, close_prices)
     st.markdown(f"# {name}")
     st.markdown(f"Select {name} constituents to build a portfolio")
     query = st.columns(2)[0].text_input(
