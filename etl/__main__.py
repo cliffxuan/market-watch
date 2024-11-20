@@ -159,7 +159,7 @@ def calculate_returns(
     }
     for period, label in periods.items():
         constituents[f"{label}%"] = (
-            close.iloc[-1] / close.iloc[-period] * 100 - 100
+            close.iloc[-1] / close.iloc[-period - 1] * 100 - 100
         ).round(2)
 
     constituents = rank_by_market_cap(constituents)
