@@ -47,6 +47,7 @@ def trading_view(
         "NYQ": "NYSE",
         "NGM": "NASDAQ",  # Enphase
         "BTS": "AMEX",  # CBOE
+        "NCM": "BATS"  # MARA, CLSK
     }
     exchange_long = exchange_mapping.get(exchange, exchange)
     name = name.upper().replace("-", ".")  # e.g. BRK-B
@@ -139,7 +140,7 @@ def get_tickers_hist() -> pd.DataFrame:
     return pd.read_parquet(DATA_DIR / "hist.parquet")
 
 
-def display_tickers(names, show_details: bool = True, optimize: bool = True):
+def display_tickers(names: list[str], show_details: bool = True, optimize: bool = True):
     df = pd.DataFrame({"LocalDate": []}).set_index("LocalDate")
     for name in names:
         ticker = TICKERS.get(name, name)
