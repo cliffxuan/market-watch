@@ -13,9 +13,9 @@ from github import Auth, Github
 
 from market_watch import yahoo_finance as yf2
 from market_watch.ticker_data import (
+    calculate_returns,
     get_tickers_hists,
     get_tickers_info,
-    rank_by_market_cap,
 )
 
 PWD = Path(__file__).parent.absolute()
@@ -126,46 +126,6 @@ def handler(pd: "pipedream"):  # type: ignore  # noqa
     return {"succeed": True, "message": message}
 
 
-def calculate_returns(
-    info: dict, hists: pd.DataFrame, symbols: list[str]
-) -> pd.DataFrame:
-    # Create DataFrame from tickers info
-    constituents = pd.DataFrame.from_dict(
-        {
-            symbol: {
-                "Symbol": symbol,
-                "Name": val["price"]["shortName"],
-                "Market Cap": val["price"]["marketCap"]["raw"],
-                "Volume": val["summaryDetail"]["volume"]["raw"],
-            }
-            for symbol in symbols
-            if (val := info["data"].get(symbol))
-        },
-        orient="index",
-    )
-
-    close = hists["Close"]
-
-    periods = {
-        1: "1d",
-        7: "7d",
-        30: "30d",
-        90: "90d",
-        180: "6mo",
-        365: "1y",
-        730: "2y",
-        1095: "3y",
-        1460: "4y",
-    }
-    for period, label in periods.items():
-        constituents[f"{label}%"] = (
-            close.iloc[-1] / close.iloc[-period - 1] * 100 - 100
-        ).round(2)
-
-    constituents = rank_by_market_cap(constituents)
-    return constituents
-
-
 def argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="etl")
     parser.add_argument("--commit", "-c", action="store_true", help="commit to github")
@@ -206,8 +166,8 @@ def main(argv: list[str] | None = None) -> None:
         info = get_tickers_info()
         for collection in COLLECTIONS:
             df = calculate_returns(
-                info=info,
-                hists=pd.read_parquet(hist_file_path),
+                data=info["data"],
+                close_prices=pd.read_parquet(hist_file_path)["Close"],
                 symbols=pd.read_csv(DATA_DIR / "raw" / f"{collection}.csv")[
                     "Symbol"
                 ].tolist(),

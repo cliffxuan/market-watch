@@ -64,3 +64,41 @@ def get_tickers_hists(tickers: list[str]) -> pd.DataFrame:
     # Create the combined DataFrame
     combined_df = pd.DataFrame(combined_data, columns=columns)
     return combined_df
+
+
+def calculate_returns(
+    data: dict, close_prices: pd.DataFrame, symbols: list[str]
+) -> pd.DataFrame:
+    # Create DataFrame from tickers info
+    constituents = pd.DataFrame.from_dict(
+        {
+            symbol: {
+                "Symbol": symbol,
+                "Name": val["price"]["shortName"],
+                "Market Cap": val["price"]["marketCap"]["raw"],
+                "Volume": val["summaryDetail"]["volume"]["raw"],
+            }
+            for symbol in symbols
+            if (val := data.get(symbol))
+        },
+        orient="index",
+    )
+
+    periods = {
+        1: "1d",
+        7: "7d",
+        30: "30d",
+        90: "90d",
+        180: "6mo",
+        365: "1y",
+        730: "2y",
+        1095: "3y",
+        1460: "4y",
+    }
+    for period, label in periods.items():
+        constituents[f"{label}%"] = (
+            close_prices.iloc[-1] / close_prices.iloc[-period - 1] * 100 - 100
+        ).round(2)
+
+    constituents = rank_by_market_cap(constituents)
+    return constituents

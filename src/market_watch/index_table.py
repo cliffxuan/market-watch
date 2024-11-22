@@ -1,8 +1,10 @@
+import datetime as dt
+
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-from market_watch.ticker_data import rank_by_market_cap
+from market_watch.ticker_data import calculate_returns
 from market_watch.utils import (
     display_tickers,
     get_tickers_hist,
@@ -25,44 +27,19 @@ def get_info(
     symbols: list[str],
     tickers_info: dict | None = None,
     close_prices: pd.DataFrame | None = None,
-):
+) -> tuple[pd.DataFrame, dt.datetime]:
     tickers_info = tickers_info if tickers_info is not None else get_tickers_info()
     close_prices = (
         close_prices if close_prices is not None else get_tickers_hist()["Close"]
     )
-    # Create DataFrame from tickers info
-    constituents = pd.DataFrame.from_dict(
-        {
-            symbol: {
-                "Symbol": symbol,
-                "Name": val["price"]["shortName"],
-                "Market Cap": val["price"]["marketCap"]["raw"],
-                "Volume": val["summaryDetail"]["volume"]["raw"],
-            }
-            for symbol in symbols
-            if (val := tickers_info["data"].get(symbol))
-        },
-        orient="index",
+    return (
+        calculate_returns(
+            data=tickers_info["data"],
+            close_prices=close_prices,
+            symbols=symbols,
+        ),
+        tickers_info["creation_time"],
     )
-
-    periods = {
-        1: "1d",
-        7: "7d",
-        30: "30d",
-        90: "90d",
-        180: "6mo",
-        365: "1y",
-        730: "2y",
-        1095: "3y",
-        1460: "4y",
-    }
-    for period, label in periods.items():
-        constituents[f"{label}%"] = (
-            close_prices.iloc[-1] / close_prices.iloc[-period] * 100 - 100
-        ).round(2)
-
-    constituents = rank_by_market_cap(constituents)
-    return constituents, tickers_info["creation_time"]
 
 
 def index_table(
