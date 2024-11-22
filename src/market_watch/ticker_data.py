@@ -77,9 +77,12 @@ def calculate_returns(
                 "Name": val["price"]["shortName"],
                 "Market Cap": val["price"]["marketCap"]["raw"],
                 "Volume": val["summaryDetail"]["volume"]["raw"],
-                "V/C ‱": val["summaryDetail"]["volume"]["raw"]
-                / val["price"]["marketCap"]["raw"]
-                * 10_000,
+                "V/C ‱": round(
+                    val["summaryDetail"]["volume"]["raw"]
+                    / val["price"]["marketCap"]["raw"]
+                    * 10_000,
+                    2,
+                ),
             }
             for symbol in symbols
             if (val := data.get(symbol))
