@@ -14,6 +14,7 @@ precheck() {
     echo "There are uncommitted changes. Please commit or stash them before running this script."
     exit 1
   fi
+  git pull
 }
 
 remove() {
