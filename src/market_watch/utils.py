@@ -47,7 +47,7 @@ def trading_view(
         "NYQ": "NYSE",
         "NGM": "NASDAQ",  # Enphase
         "BTS": "AMEX",  # CBOE
-        "NCM": "BATS"  # MARA, CLSK
+        "NCM": "BATS",  # MARA, CLSK
     }
     exchange_long = exchange_mapping.get(exchange, exchange)
     name = name.upper().replace("-", ".")  # e.g. BRK-B
@@ -162,12 +162,16 @@ def display_tickers(names: list[str], show_details: bool = True, optimize: bool 
                     ).to_html(escape=False, header=False),
                     unsafe_allow_html=True,
                 )
-                info_tabs = st.tabs(["Closing Price", "TradingView"])
+                info_tabs = st.tabs(["Closing Price", "Volume", "TradingView"])
                 with info_tabs[0]:
                     st.plotly_chart(
                         px.line(get_hist(ticker), y="Close"), use_container_width=True
                     )
                 with info_tabs[1]:
+                    st.plotly_chart(
+                        px.line(get_hist(ticker), y="Volume"), use_container_width=True
+                    )
+                with info_tabs[2]:
                     trading_view(name, info["exchange"])
     st.divider()
     st.markdown("## Collective")

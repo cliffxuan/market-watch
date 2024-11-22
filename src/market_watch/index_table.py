@@ -60,6 +60,8 @@ def index_table(
     cols = list(constituents)
     constituents["Select"] = False
     st.markdown(f"last updated: {creation_time.strftime('%Y-%m-%dT%H:%M%z')}")
+    constituents["Market Cap"] = (constituents["Market Cap"] / 1_000_000).astype(int)
+    constituents["Volume"] = (constituents["Volume"] / 1_000_000).round(1)
     constituents = st.data_editor(
         constituents,
         column_order=["Select", *cols],
@@ -68,7 +70,9 @@ def index_table(
                 "",
                 help="Select to see more info and portfolio optimization",
                 default=False,
-            )
+            ),
+            "Market Cap": st.column_config.NumberColumn("Market Cap ($M)"),
+            "Volume": st.column_config.NumberColumn("Vol ($M)"),
         },
         disabled=cols,
         hide_index=True,

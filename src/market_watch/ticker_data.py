@@ -77,6 +77,9 @@ def calculate_returns(
                 "Name": val["price"]["shortName"],
                 "Market Cap": val["price"]["marketCap"]["raw"],
                 "Volume": val["summaryDetail"]["volume"]["raw"],
+                "V/C ‱": val["summaryDetail"]["volume"]["raw"]
+                / val["price"]["marketCap"]["raw"]
+                * 10_000,
             }
             for symbol in symbols
             if (val := data.get(symbol))
@@ -86,7 +89,9 @@ def calculate_returns(
 
     periods = {
         1: "1d",
+        3: "3d",
         7: "7d",
+        15: "15d",
         30: "30d",
         90: "90d",
         180: "6mo",
@@ -96,7 +101,7 @@ def calculate_returns(
         1460: "4y",
     }
     for period, label in periods.items():
-        constituents[f"{label}%"] = (
+        constituents[f"{label} %"] = (
             close_prices.iloc[-1] / close_prices.iloc[-period - 1] * 100 - 100
         ).round(2)
 
