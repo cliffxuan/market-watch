@@ -14,7 +14,10 @@ precheck() {
     echo "There are uncommitted changes. Please commit or stash them before running this script."
     exit 1
   fi
-  git pull
+  if ! git pull; then
+    echo "failed pulling remote."
+    exit 1
+  fi
 }
 
 remove() {
