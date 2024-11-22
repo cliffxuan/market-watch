@@ -10,22 +10,30 @@ PREFIX = "PI_CYCLE"
 
 
 @st.cache_data(ttl="1h")
-def btc_hist():
-    return yf.Ticker("BTC-USD").history(start="2013-04-28")
+def get_hist(ticker: str) -> pd.DataFrame:
+    return yf.Ticker(ticker).history(period="max")
 
 
 def main():
     st.markdown("# Pi Cycle Top Indicator")
-    hist = btc_hist()
+    ticker = st.text_input("ticker", value="BTC-USD")
+    hist = get_hist(ticker)
     df = hist.loc[:, ["Close", "Volume"]]
     df["111DMA"] = hist["Close"].rolling(window=111).mean()
     df["350DMA x 2"] = hist["Close"].rolling(window=350).mean() * 2
 
     df_above = df[df["111DMA"] > df["350DMA x 2"]]
-    prev_date = df_above.index[0]
-    cross_dates = [prev_date]
+    cross_dates = []
+    try:
+        prev_date = df_above.index[0]
+        cross_dates.append(prev_date)
+    except IndexError:
+        prev_date = None
     for date in df_above.index:
-        if prev_date is not None and (date - prev_date).days > 1:
+        if (
+            prev_date is not None
+            and df.index.get_loc(date) - df.index.get_loc(prev_date) > 1
+        ):
             cross_dates.append(date)
         prev_date = date
 
