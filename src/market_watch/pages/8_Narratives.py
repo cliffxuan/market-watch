@@ -19,6 +19,11 @@ NARRATIVES = {
             "ticker": "PYTH-USD",
             "symbol": "PYTHUSD",
         },
+        {
+            "name": "SOL",
+            "ticker": "SOL-USD",
+            "symbol": "SOLUSD",
+        },
     ],
     "LAYER1": [
         {
@@ -137,7 +142,7 @@ def get_df() -> pd.DataFrame:
             record = {
                 "Name": coin["name"],
                 "Narrative": narrative,
-                "Market Cap": ticker.info["marketCap"],
+                "Market Cap ($M)": int(ticker.info["marketCap"] / 1_000_000),
                 "Price": close.iloc[-1],
                 "ATH Date": close.idxmax().strftime("%Y-%m-%d"),  # type: ignore
                 "ATH %": (close.iloc[-1] / close.max() - 1).round(4) * 100,
