@@ -162,17 +162,17 @@ def display_tickers(names: list[str], show_details: bool = True, optimize: bool 
                     ).to_html(escape=False, header=False),
                     unsafe_allow_html=True,
                 )
-                info_tabs = st.tabs(["Closing Price", "Volume", "TradingView"])
+                info_tabs = st.tabs(["TradingView", "Closing Price", "Volume"])
                 with info_tabs[0]:
-                    st.plotly_chart(
-                        px.line(get_hist(ticker), y="Close"), use_container_width=True
-                    )
+                    trading_view(name, info["exchange"])
                 with info_tabs[1]:
                     st.plotly_chart(
                         px.line(get_hist(ticker), y="Volume"), use_container_width=True
                     )
                 with info_tabs[2]:
-                    trading_view(name, info["exchange"])
+                    st.plotly_chart(
+                        px.line(get_hist(ticker), y="Close"), use_container_width=True
+                    )
     st.divider()
     st.markdown("## Collective")
     price_tabs = st.tabs(
