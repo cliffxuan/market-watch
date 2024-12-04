@@ -8,7 +8,7 @@ import streamlit as st
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from market_watch.utils import is_authorised, set_page_config_once
+from market_watch.utils import auth_required, set_page_config_once
 
 # https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=cliffxuan
 YOUTUBE_API_KEY = st.secrets["youtube_api_key"]
@@ -128,6 +128,7 @@ def max_tokens_for_summary(text: str) -> int:
     return min(max(100, len(text) // 4), 1000)
 
 
+@auth_required
 def main() -> None:
     st.markdown("# Influencers")
     # Process each channel
@@ -161,7 +162,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     set_page_config_once()
-    if is_authorised():
-        main()
-    else:
-        st.error("refresh and enter the correct auth key")
+    main()

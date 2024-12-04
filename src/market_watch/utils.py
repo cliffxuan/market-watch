@@ -54,6 +54,16 @@ def is_authorised() -> bool:
     return False
 
 
+def auth_required(f):
+    def wrapped(*args, **kw):
+        if is_authorised():
+            return f(*args, **kw)
+        else:
+            st.error("refresh and enter the correct auth key")
+
+    return wrapped
+
+
 def trading_view(
     name: str,
     exchange: str,
