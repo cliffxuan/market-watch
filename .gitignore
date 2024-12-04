@@ -1,3 +1,5 @@
 !data/info.json.gz
 data/info.json
 etl/prefect-server/data/
+src/market_watch/pages/.store/
+.streamlit/
