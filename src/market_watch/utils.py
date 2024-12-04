@@ -38,6 +38,7 @@ def is_local_run() -> bool:
         ip_addresses = socket.getaddrinfo(hostname, None)
 
         # Check if any of the IP addresses are local
+        st.write([addr[4][0] for addr in ip_addresses])
         for addr in ip_addresses:
             ip = addr[4][0]
             if (
