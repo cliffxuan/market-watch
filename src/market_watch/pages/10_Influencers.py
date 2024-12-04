@@ -164,4 +164,4 @@ if __name__ == "__main__":
     if is_authorised():
         main()
     else:
-        st.error("authkey wrong")
+        st.error("refresh and enter the correct auth key")

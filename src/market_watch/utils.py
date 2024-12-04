@@ -23,7 +23,6 @@ TICKERS = {"BTC": "BTC-USD", "SPX": "^SPX", "GOLD": "GC=F", "DXY": "DX-Y.NYB"}
 
 
 def is_local_run() -> bool:
-    st.write("processor: " + platform.processor())
     return bool(platform.processor().strip())
 
 
