@@ -1,5 +1,5 @@
 import json
-import socket
+import platform
 from functools import reduce
 from hashlib import sha256
 from pathlib import Path
@@ -23,37 +23,8 @@ TICKERS = {"BTC": "BTC-USD", "SPX": "^SPX", "GOLD": "GC=F", "DXY": "DX-Y.NYB"}
 
 
 def is_local_run() -> bool:
-    """
-    Check if the Streamlit app is running on a local machine.
-
-    Returns:
-    bool: True if running locally, False otherwise
-    """
-    try:
-        # Check if the hostname resolves to a loopback address
-        hostname = socket.gethostname()
-        local_addresses = ["localhost", "127.0.0.1", "::1"]
-
-        # Get all IP addresses associated with the hostname
-        ip_addresses = socket.getaddrinfo(hostname, None)
-
-        # Check if any of the IP addresses are local
-        st.write([addr[4][0] for addr in ip_addresses])
-        for addr in ip_addresses:
-            ip = addr[4][0]
-            if (
-                ip in local_addresses
-                or ip.startswith("127.")
-                or ip.startswith("::1")
-                or ip.startswith("192.")
-                or ip.startswith("10.")
-            ):
-                return True
-
-        return False
-    except Exception:
-        # If there's an error, default to assuming it's not a local run
-        return False
+    st.write("processor: " + platform.processor())
+    return bool(platform.processor().strip())
 
 
 def set_page_config_once() -> None:
