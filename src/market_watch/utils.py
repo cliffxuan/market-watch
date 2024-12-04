@@ -40,7 +40,13 @@ def is_local_run() -> bool:
         # Check if any of the IP addresses are local
         for addr in ip_addresses:
             ip = addr[4][0]
-            if ip in local_addresses or ip.startswith("127.") or ip.startswith("::1"):
+            if (
+                ip in local_addresses
+                or ip.startswith("127.")
+                or ip.startswith("::1")
+                or ip.startswith("192.")
+                or ip.startswith("10.")
+            ):
                 return True
 
         return False
@@ -71,11 +77,10 @@ def check_passkey() -> None:
 
 
 def is_authorised() -> bool:
-    if is_local_run():
+    if is_local_run() or st.session_state.get("authorised", False):
         return True
-    while not st.session_state.get("authorised", False):
-        check_passkey()
-    return True
+    check_passkey()
+    return False
 
 
 def trading_view(

@@ -163,3 +163,5 @@ if __name__ == "__main__":
     set_page_config_once()
     if is_authorised():
         main()
+    else:
+        st.error("authkey wrong")
