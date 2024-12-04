@@ -1,5 +1,7 @@
 import json
+import socket
 from functools import reduce
+from hashlib import sha256
 from pathlib import Path
 from string import Template
 
@@ -20,6 +22,33 @@ DATA_DIR = PWD.parent.parent / "data"
 TICKERS = {"BTC": "BTC-USD", "SPX": "^SPX", "GOLD": "GC=F", "DXY": "DX-Y.NYB"}
 
 
+def is_local_run() -> bool:
+    """
+    Check if the Streamlit app is running on a local machine.
+
+    Returns:
+    bool: True if running locally, False otherwise
+    """
+    try:
+        # Check if the hostname resolves to a loopback address
+        hostname = socket.gethostname()
+        local_addresses = ["localhost", "127.0.0.1", "::1"]
+
+        # Get all IP addresses associated with the hostname
+        ip_addresses = socket.getaddrinfo(hostname, None)
+
+        # Check if any of the IP addresses are local
+        for addr in ip_addresses:
+            ip = addr[4][0]
+            if ip in local_addresses or ip.startswith("127.") or ip.startswith("::1"):
+                return True
+
+        return False
+    except Exception:
+        # If there's an error, default to assuming it's not a local run
+        return False
+
+
 def set_page_config_once() -> None:
     try:
         st.set_page_config(
@@ -31,6 +60,24 @@ def set_page_config_once() -> None:
         return
 
 
+@st.dialog("passkey")
+def check_passkey() -> None:
+    text = st.text_input("passkey", type="password")
+    if st.button("Submit"):
+        st.session_state.authorised = (
+            sha256(text.encode("utf-8")).hexdigest() == st.secrets["passkey"]
+        )
+        st.rerun()
+
+
+def is_authorised() -> bool:
+    if is_local_run():
+        return True
+    while not st.session_state.get("authorised", False):
+        check_passkey()
+    return True
+
+
 def trading_view(
     name: str,
     exchange: str,
@@ -38,7 +85,7 @@ def trading_view(
     hide_side_toolbar: bool = False,
     interval: str = "W",
     style: int = 1,
-):
+) -> None:
     """
     https://www.tradingview.com/widget/advanced-chart/
     """

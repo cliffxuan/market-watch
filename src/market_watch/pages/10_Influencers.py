@@ -8,8 +8,9 @@ import streamlit as st
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from market_watch.utils import set_page_config_once
+from market_watch.utils import is_authorised, set_page_config_once
 
+# https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=cliffxuan
 YOUTUBE_API_KEY = st.secrets["youtube_api_key"]
 OPENAI_API_KEY = st.secrets["openai_api_key"]
 
@@ -27,9 +28,8 @@ PWD = Path(__file__).absolute().parent
 STORE = PWD / ".store"
 STORE.mkdir(exist_ok=True)
 
-st.write(st.experimental_user.to_dict())
 
-
+@st.cache_data(ttl="2h")
 def get_latest_videos(channel_id: str, limit: int = 5) -> list[dict]:
     return (
         build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
@@ -161,4 +161,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     set_page_config_once()
-    main()
+    if is_authorised():
+        main()
