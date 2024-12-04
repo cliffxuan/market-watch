@@ -27,7 +27,7 @@ PWD = Path(__file__).absolute().parent
 STORE = PWD / ".store"
 STORE.mkdir(exist_ok=True)
 
-st.write(st.experimental_user.email)
+st.write(st.experimental_user.to_dict())
 
 
 def get_latest_videos(channel_id: str, limit: int = 5) -> list[dict]:
