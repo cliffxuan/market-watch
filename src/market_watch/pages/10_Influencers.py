@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import html
 import json
 import logging
 import textwrap
@@ -32,6 +33,8 @@ CHANNELS = {
     "@TheMoon": "UCc4Rz_T9Sb1w5rqqo9pL1Og",
     "@TokenMetrics": "UCH9MOLQ_KUpZ_cw8uLGUisA",
     "@CryptoBanterGroup": "UCN9Nj4tjXbVTLYWN0EKly_Q",
+    "@Coinsider": "UCi7egjf0JDHuhznWugXq4hA",
+    "@DataDash": "UCCatR7nWbYrkVXdxXb4cGXw",
 }
 CHANNELS_REVERSE = {v: k for k, v in CHANNELS.items()}
 
@@ -39,6 +42,13 @@ CHANNELS_REVERSE = {v: k for k, v in CHANNELS.items()}
 PWD = Path(__file__).absolute().parent
 STORE = PWD / ".store"
 STORE.mkdir(exist_ok=True)
+
+
+def md_escape(text: str, multi_line: bool = False) -> str:
+    text = text.replace("$", "\\$")
+    if multi_line:
+        text = text.replace(". ", ".\n\n")
+    return text
 
 
 class Video(BaseModel):
@@ -58,10 +68,8 @@ class Video(BaseModel):
     @cached_property
     def summary(self) -> str | None:
         if self.captions is not None:
-            return (
-                summarize_text("\n".join([self.title, self.description, self.captions]))
-                .replace("$", "\\$")
-                .replace(". ", ".\n")
+            return summarize_text(
+                "\n".join([self.title, self.description, self.captions])
             )
 
     @computed_field
@@ -78,7 +86,7 @@ class Video(BaseModel):
             video = cls.model_validate(
                 {
                     "id": item["id"]["videoId"],
-                    "title": item["snippet"]["title"],
+                    "title": html.unescape(item["snippet"]["title"]),
                     "description": item["snippet"]["description"],
                     "thumbnail_url": item["snippet"]["thumbnails"]["default"]["url"],
                     "channel": CHANNELS_REVERSE[item["snippet"]["channelId"]],
@@ -197,14 +205,16 @@ def main() -> None:
     all_videos = {}
     for channel, channel_id in CHANNELS.items():
         with st.spinner(f"\nAnalyzing channel: {channel}"):
-            data = get_latest_videos(channel_id, limit=2)
+            data = get_latest_videos(channel_id, limit=5)
             all_data = [*all_data, *data]
             for video in Video.process_videos(data):
                 all_videos[video.id] = video
 
-    all_videos_df = pd.DataFrame([video.model_dump() for video in all_videos.values()])
+    all_videos_df = pd.DataFrame(
+        [video.model_dump() for video in all_videos.values()]
+    ).sort_values(by="publish_time", ascending=False)
     all_videos_df["select"] = st.session_state.setdefault(
-        "{__name__}.selected", [False] * len(all_videos)
+        f"{__name__}.selected.{len(all_videos)}", [False] * len(all_videos)
     )
     cols = [
         "thumbnail_url",
@@ -213,43 +223,50 @@ def main() -> None:
         "publish_time",
         "summary",
     ]
-    selected = st.data_editor(
-        all_videos_df,
-        column_order=["select", *cols],
-        column_config={
-            "select": st.column_config.CheckboxColumn(
-                "",
-                help="Select to see more info and portfolio optimization",
-                default=False,
-            ),
-            "channel_url": st.column_config.LinkColumn(
-                "channel",
-                validate=r"^https://youtube\.com/@(.+)$",
-                max_chars=100,
-                display_text=r"^https://youtube\.com/@(.+)$",
-            ),
-            "thumbnail_url": st.column_config.ImageColumn("thumbnail"),
-        },
-        disabled=cols,
-        hide_index=True,
-        height=(len(all_videos) + 1) * 35 + 3,
-    )
-    ids = list(selected[selected["select"]]["id"])
-    for video_id in ids:
-        video = all_videos[video_id]
-        st.markdown(f"- {video.title}")
-        st.markdown(f"[![{video.url}]({video.thumbnail_url})]({video.url})")
-        st.markdown(f"Channel: [{video.channel}]({video.channel_url})")
-        st.markdown(f"Description: {video.description}")
-        st.markdown(f"Publish Time: {video.publish_time}")
-        if video.captions is not None:
-            st.markdown(f"Summary: {video.summary}")
-        else:
-            st.error("No captions available")
-        st.divider()
+    tabs = st.tabs(["Table", "Data"])
+    with tabs[0]:
+        selected = st.data_editor(
+            all_videos_df,
+            column_order=["select", *cols],
+            column_config={
+                "select": st.column_config.CheckboxColumn(
+                    "",
+                    help="Select to see more info and portfolio optimization",
+                    default=False,
+                ),
+                "channel_url": st.column_config.LinkColumn(
+                    "channel",
+                    validate=r"^https://youtube\.com/@(.+)$",
+                    max_chars=100,
+                    display_text=r"^https://youtube\.com/@(.+)$",
+                ),
+                "thumbnail_url": st.column_config.ImageColumn("thumbnail"),
+            },
+            disabled=cols,
+            hide_index=True,
+            height=(len(all_videos) + 1) * 35 + 3,
+        )
+        ids = list(selected[selected["select"]]["id"])
+        for video_id in ids:
+            video = all_videos[video_id]
+            st.markdown(f"- {video.title}")
+            st.markdown(f"[![{video.url}]({video.thumbnail_url})]({video.url})")
+            st.markdown(f"Channel: [{video.channel}]({video.channel_url})")
+            st.markdown(f"Description: {md_escape(video.description)}")
+            st.markdown(f"Publish Time: {video.publish_time}")
+            if video.captions is not None:
+                st.markdown(f"Summary: {md_escape(video.summary, multi_line=True)}")
+            else:
+                st.error("No captions available")
+            with st.expander("data"):
+                st.json(all_videos[video_id].model_dump())
+            st.divider()
 
-    with st.expander("raw data"):
-        st.json(all_data)
+    with tabs[1]:
+        with st.expander("raw"):
+            st.json(all_data)
+        with st.expander("videos"):
+            st.json([video.model_dump() for video in all_videos.values()])
 
 
 if __name__ == "__main__":
