@@ -29,6 +29,9 @@ CHANNELS = {
     "@AltcoinDaily": "UCbLhGKVY-bJPcawebgtNfbw",
     "@VirtualBacon": "UCcrEA_xd9Ldf1C8DIJYdyyA",
     "@Jungernaut": "UCQglaVhGOBI0BR5S6IJnQPg",
+    "@TheMoon": "UCc4Rz_T9Sb1w5rqqo9pL1Og",
+    "@TokenMetrics": "UCH9MOLQ_KUpZ_cw8uLGUisA",
+    "@CryptoBanterGroup": "UCN9Nj4tjXbVTLYWN0EKly_Q",
 }
 CHANNELS_REVERSE = {v: k for k, v in CHANNELS.items()}
 
