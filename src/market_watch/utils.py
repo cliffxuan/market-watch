@@ -48,7 +48,11 @@ def check_passkey() -> None:
 
 
 def is_authorised() -> bool:
-    if is_local_run() or st.session_state.get("authorised", False):
+    if (
+        is_local_run()
+        or st.secrets.get("auth_required", "true").lower() == "false"
+        or st.session_state.get("authorised", False)
+    ):
         return True
     check_passkey()
     return False
