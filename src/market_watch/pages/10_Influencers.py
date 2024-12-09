@@ -22,6 +22,7 @@ from market_watch.utils import auth_required, set_page_config_once
 # https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=cliffxuan
 YOUTUBE_API_KEY = st.secrets["youtube_api_key"]
 OPENAI_API_KEY = st.secrets["openai_api_key"]
+YOUTUBE_TRANSCRIPT_API_PROXY = st.secrets.get("youtube_transcript_api_proxy")
 
 CHANNELS = {
     "@CoinBureau": "UCqK_GSMbpiV8spgD3ZGloSw",
@@ -114,7 +115,12 @@ def get_video_captions(video_id: str) -> str | None:
     if video_id in all_captions:
         return all_captions[video_id]
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        if YOUTUBE_TRANSCRIPT_API_PROXY is None:
+            transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        else:
+            transcript = YouTubeTranscriptApi.get_transcript(
+                video_id, proxies={"https": YOUTUBE_TRANSCRIPT_API_PROXY}
+            )
         captions = " ".join([entry["text"] for entry in transcript])
         all_captions[video_id] = captions
         with file_path.open("w") as f:
