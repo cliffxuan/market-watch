@@ -5,6 +5,7 @@ docker network create warp_network || true
 
 # Run the Docker container
 docker run --rm \
+  --name warp \
   --device /dev/net/tun:/dev/net/tun \
   -p 1080:1080 \
   -e WARP_SLEEP=2 \
