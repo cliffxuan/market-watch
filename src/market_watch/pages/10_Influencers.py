@@ -23,6 +23,7 @@ from market_watch.utils import auth_required, set_page_config_once
 YOUTUBE_API_KEY = st.secrets["youtube_api_key"]
 OPENAI_API_KEY = st.secrets["openai_api_key"]
 YOUTUBE_TRANSCRIPT_API_PROXY = st.secrets.get("youtube_transcript_api_proxy")
+GPT_MODEL = "gpt-4o-mini"
 
 CHANNELS = {
     "@CoinBureau": "UCqK_GSMbpiV8spgD3ZGloSw",
@@ -166,7 +167,7 @@ def summarize_text(text: str, max_length: int = 1_000) -> str:
         return all_summaries[hash_key]
     try:
         response = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
-            model="gpt-4o-mini",
+            model=GPT_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -267,6 +268,35 @@ def main() -> None:
                 st.markdown(f"Summary: {md_escape(video.summary, multi_line=True)}")
             else:
                 st.error("No captions available")
+            if prompt := st.chat_input("ask some question"):
+                messages = st.container(height=300)
+                messages.chat_message("user").write(prompt)
+                response = openai.OpenAI(
+                    api_key=OPENAI_API_KEY
+                ).chat.completions.create(
+                    model=GPT_MODEL,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": """
+                You are a helpful assistant that answers questions precisely.
+                """,
+                        },
+                        {
+                            "role": "user",
+                            "content": textwrap.dedent(
+                                f"""
+                answer question "{prompt}"
+                context: {video.model_dump_json()}
+                """.strip()
+                            ),
+                        },
+                    ],
+                )
+                messages.chat_message("assistant").write(
+                    response.choices[0].message.content.strip()
+                )
+
             with st.expander("data"):
                 st.json(all_videos[video_id].model_dump())
             st.divider()
