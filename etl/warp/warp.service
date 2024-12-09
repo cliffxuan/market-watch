@@ -1,0 +1,14 @@
+# /etc/systemd/system
+[Unit]
+Description=Warp
+Wants=network-online.target
+After=network-online.target
+[Service]
+User=cliff
+Group=cliff
+Type=simple
+Restart=always
+RestartSec=5
+ExecStart=/home/cliff/dev/market-watch/etl/warp/run.sh
+[Install]
+WantedBy=multi-user.target
