@@ -222,11 +222,14 @@ def main() -> None:
     all_videos_df["select"] = st.session_state.setdefault(
         f"{__name__}.selected.{len(all_videos)}", [False] * len(all_videos)
     )
+    all_videos_df["publish_time"] = pd.to_datetime(
+        all_videos_df["publish_time"]
+    ).dt.strftime("%Y-%m-%d %H:%M")
     cols = [
         "thumbnail_url",
-        "title",
         "channel_url",
         "publish_time",
+        "title",
         "summary",
     ]
     tabs = st.tabs(["Table", "Data"])
