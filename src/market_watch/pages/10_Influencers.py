@@ -37,6 +37,7 @@ CHANNELS = {
     "@CryptoBanterGroup": "UCN9Nj4tjXbVTLYWN0EKly_Q",
     "@Coinsider": "UCi7egjf0JDHuhznWugXq4hA",
     "@DataDash": "UCCatR7nWbYrkVXdxXb4cGXw",
+    "@Bankless": "UCAl9Ld79qaZxp9JzEOwd3aA",
 }
 CHANNELS_REVERSE = {v: k for k, v in CHANNELS.items()}
 
