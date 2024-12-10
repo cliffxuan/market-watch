@@ -268,7 +268,9 @@ def main() -> None:
                 st.markdown(f"Summary: {md_escape(video.summary, multi_line=True)}")
             else:
                 st.error("No captions available")
-            if prompt := st.chat_input("ask some question"):
+            if prompt := st.chat_input(
+                "ask some question", key=f"chat_input.{video_id}"
+            ):
                 messages = st.container(height=300)
                 messages.chat_message("user").write(prompt)
                 response = openai.OpenAI(
