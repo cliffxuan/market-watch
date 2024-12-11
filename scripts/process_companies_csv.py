@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> None:
         companies = pd.read_csv(args.file, sep="\t")
     else:
         raise Exception(f"unsupported list type {args.type}")
-    companies.to_csv(DATA_DIR / f"{args.type}.csv", index=False)
+    companies.to_csv(DATA_DIR / "raw" / f"{args.type}.csv", index=False)
 
 
 if __name__ == "__main__":
