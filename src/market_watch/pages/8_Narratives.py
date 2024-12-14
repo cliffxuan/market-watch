@@ -153,6 +153,17 @@ NARRATIVES = {
             "symbol": "WILDUSD",
             "exchange": "CRYPTO",
         },
+        {
+            "name": "Prime",
+            "ticker": "WILD-USD",
+            "symbol": "PRIMEUSD",
+            "exchange": "COINBASE",
+        },
+        {
+            "name": "Beam",
+            "ticker": "BEAM28298-USD",
+            "symbol": "BEAMXUSDT",
+        },
     ],
 }
 
@@ -166,41 +177,45 @@ def get_hist(name: str) -> pd.DataFrame:
 
 
 @st.cache_data(ttl="1h")
-def get_df() -> pd.DataFrame:
+def get_coin_price(coin: dict) -> dict:
+    hist = get_hist(coin["ticker"])
+    ticker = yf.ticker.Ticker(coin["ticker"])
+    close = hist["Close"]
+    try:
+        price = close.iloc[-1]
+        ath_date = close.idxmax().strftime("%Y-%m-%d")  # type: ignore
+        ath_pct = (close.iloc[-1] / close.max() - 1).round(4) * 100
+    except Exception:
+        price = None
+        ath_date = None
+        ath_pct = None
+    record = {
+        "Name": coin["name"],
+        "Market Cap ($M)": int(ticker.info["marketCap"] / 1_000_000),
+        "Price": price,
+        "ATH Date": ath_date,
+        "ATH %": ath_pct,
+    }
+    for day in [1, 7, 30, 90, 180, 360]:
+        try:
+            record[f"{day}d %"] = (close.iloc[-1] / close.iloc[-day - 1] - 1).round(
+                4
+            ) * 100
+        except IndexError:
+            record[f"{day}d %"] = None
+    record["Historical Prices"] = close.values
+    return record
+
+
+@st.cache_data(ttl="1h")
+def get_df(narratives: dict[str, list[dict]]) -> pd.DataFrame:
     data = []
-    for narrative in NARRATIVES:
-        for coin in NARRATIVES[narrative]:
+    for narrative, coins in narratives.items():
+        for coin in coins:
             try:
-                hist = get_hist(coin["ticker"])
-                ticker = yf.ticker.Ticker(coin["ticker"])
-                close = hist["Close"]
-                try:
-                    price = close.iloc[-1]
-                    ath_date = close.idxmax().strftime("%Y-%m-%d")  # type: ignore
-                    ath_pct = (close.iloc[-1] / close.max() - 1).round(4) * 100
-                except Exception:
-                    price = None
-                    ath_date = None
-                    ath_pct = None
-                record = {
-                    "Name": coin["name"],
-                    "Narrative": narrative,
-                    "Market Cap ($M)": int(ticker.info["marketCap"] / 1_000_000),
-                    "Price": price,
-                    "ATH Date": ath_date,
-                    "ATH %": ath_pct,
-                }
-                for day in [1, 7, 30, 90, 180, 360]:
-                    try:
-                        record[f"{day}d %"] = (
-                            close.iloc[-1] / close.iloc[-day - 1] - 1
-                        ).round(4) * 100
-                    except IndexError:
-                        record[f"{day}d %"] = None
-                record["Historical Prices"] = close.values
+                record = {"Narrative": narrative, **get_coin_price(coin)}
                 data.append(record)
-            except Exception as exc:
-                breakpoint()  # !!!!!!!!!!
+            except Exception:
                 logging.exception(f"Error getting {coin}")
     return pd.DataFrame(data)
 
@@ -226,7 +241,7 @@ def main() -> None:
     )
     debug = True
     debug = False
-    df = get_df()
+    df = get_df(NARRATIVES)
     for narrative in NARRATIVES:
         for coin in NARRATIVES[narrative]:
             hist = get_hist(coin["ticker"])
