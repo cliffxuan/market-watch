@@ -5,6 +5,7 @@ import plotly.express as px
 import streamlit as st
 import yfinance as yf
 
+from market_watch.index_table import search
 from market_watch.utils import set_page_config_once, trading_view
 
 NARRATIVES = {
@@ -185,16 +186,25 @@ def get_coin_price(coin: dict) -> dict:
         price = close.iloc[-1]
         ath_date = close.idxmax().strftime("%Y-%m-%d")  # type: ignore
         ath_pct = (close.iloc[-1] / close.max() - 1).round(4) * 100
+        volume = (hist["Volume"].iloc[-1] / 1_000_000).round(1)
+        market_cap = round(ticker.info["marketCap"] / 1_000_000, 1)
+        vol_cap_ratio = round(volume / market_cap * 100, 2)
     except Exception:
+        logging.exception(f"Error getting price info for coin {coin}")
         price = None
         ath_date = None
         ath_pct = None
+        volume = None
+        market_cap = None
+        vol_cap_ratio = None
     record = {
         "Name": coin["name"],
-        "Market Cap ($M)": int(ticker.info["marketCap"] / 1_000_000),
+        "Market Cap": market_cap,
         "Price": price,
         "ATH Date": ath_date,
         "ATH %": ath_pct,
+        "Volume": volume,
+        "V/C %": vol_cap_ratio,
     }
     for day in [1, 7, 30, 90, 180, 360]:
         try:
@@ -222,15 +232,6 @@ def get_df(narratives: dict[str, list[dict]]) -> pd.DataFrame:
 
 def display_coins(names: list[str]) -> None:
     tabs = st.tabs(names)
-    for i, name in enumerate(names):
-        data = NAME_TO_DATA[name]
-        with tabs[i]:
-            trading_view(name=data["symbol"], exchange=data.get("exchange", "binance"))
-
-
-def main() -> None:
-    st.markdown("# Naratives")
-
     spike_setting = dict(  # noqa: C408
         showspikes=True,
         spikemode="across",
@@ -239,22 +240,33 @@ def main() -> None:
         spikethickness=1,
         spikecolor="grey",
     )
-    debug = True
-    debug = False
+    for i, name in enumerate(names):
+        data = NAME_TO_DATA[name]
+        with tabs[i]:
+            st.markdown(f"### {data['name']}")
+            trading_view(name=data["symbol"], exchange=data.get("exchange", "binance"))
+            hist = get_hist(data["ticker"])
+            fig = px.line(hist, x=hist.index, y="Close")
+            fig.update_xaxes(**spike_setting)
+            fig.update_yaxes(**spike_setting)
+            fig.update_layout(hoverdistance=0)
+            st.plotly_chart(fig)
+            st.dataframe(hist)
+
+
+def main() -> None:
+    st.markdown("# Naratives")
     df = get_df(NARRATIVES)
-    for narrative in NARRATIVES:
-        for coin in NARRATIVES[narrative]:
-            hist = get_hist(coin["ticker"])
-            if debug:
-                st.markdown(f"### {coin['name']}")
-                st.dataframe(hist)
-                fig = px.line(hist, x=hist.index, y="Close")
-                fig.update_xaxes(**spike_setting)
-                fig.update_yaxes(**spike_setting)
-                fig.update_layout(hoverdistance=0)
-                st.plotly_chart(fig)
     cols = list(df)
-    df["Select"] = st.session_state.setdefault("{__name__}.selected", [False] * len(df))
+    df["Select"] = st.session_state.setdefault(
+        f"{__name__}.selected.{len(df)}", [False] * len(df)
+    )
+    query = st.text_input(
+        "search",
+        label_visibility="collapsed",
+        placeholder="search",
+    )
+    df = search(df, query)
     selected = st.data_editor(
         df,
         column_order=["Select", *cols],
@@ -268,6 +280,8 @@ def main() -> None:
                 "Historical Prices",
                 width="medium",
             ),
+            "Market Cap": st.column_config.NumberColumn("Market Cap ($M)"),
+            "Volume": st.column_config.NumberColumn("Vol ($M)"),
         },
         disabled=cols,
         hide_index=True,
