@@ -54,6 +54,18 @@ NARRATIVES = {
             "ticker": "FET-USD",
             "symbol": "FETUSD",
         },
+        {
+            "name": "ai16z",
+            "ticker": "AI16Z-USD",
+            "symbol": "AI16ZUSDT",
+            "exchange": "GATEIO",
+        },
+        {
+            "name": "Virtuals Protocol",
+            "ticker": "VIRTUAL-USD",
+            "symbol": "VIRTUALUSDT",
+            "exchange": "BYBIT",
+        },
     ],
     "Modular": [
         {
@@ -118,6 +130,20 @@ NARRATIVES = {
             "ticker": "HNT-USD",
             "symbol": "HNTUSD",
             "exchange": "COINBASE",
+        },
+    ],
+    "Gaming": [
+        {
+            "name": "SuperVerse",
+            "ticker": "UPER8290-USD",
+            "symbol": "SUPERUSD",
+            "exchange": "BINANCE",
+        },
+        {
+            "name": "Wilder World",
+            "ticker": "WILD-USD",
+            "symbol": "WILDUSD",
+            "exchange": "KUCOIN",
         },
     ],
 }
