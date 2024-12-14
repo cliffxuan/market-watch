@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -64,6 +66,12 @@ NARRATIVES = {
             "name": "Virtuals Protocol",
             "ticker": "VIRTUAL-USD",
             "symbol": "VIRTUALUSDT",
+            "exchange": "CRYPTO",
+        },
+        {
+            "name": "Goatseus",
+            "ticker": "GOAT33440-USD",
+            "symbol": "GOATUSDT",
             "exchange": "BYBIT",
         },
     ],
@@ -135,7 +143,7 @@ NARRATIVES = {
     "Gaming": [
         {
             "name": "SuperVerse",
-            "ticker": "UPER8290-USD",
+            "ticker": "SUPER8290-USD",
             "symbol": "SUPERUSD",
             "exchange": "BINANCE",
         },
@@ -143,7 +151,7 @@ NARRATIVES = {
             "name": "Wilder World",
             "ticker": "WILD-USD",
             "symbol": "WILDUSD",
-            "exchange": "KUCOIN",
+            "exchange": "CRYPTO",
         },
     ],
 }
@@ -162,26 +170,38 @@ def get_df() -> pd.DataFrame:
     data = []
     for narrative in NARRATIVES:
         for coin in NARRATIVES[narrative]:
-            hist = get_hist(coin["ticker"])
-            ticker = yf.ticker.Ticker(coin["ticker"])
-            close = hist["Close"]
-            record = {
-                "Name": coin["name"],
-                "Narrative": narrative,
-                "Market Cap ($M)": int(ticker.info["marketCap"] / 1_000_000),
-                "Price": close.iloc[-1],
-                "ATH Date": close.idxmax().strftime("%Y-%m-%d"),  # type: ignore
-                "ATH %": (close.iloc[-1] / close.max() - 1).round(4) * 100,
-            }
-            for day in [1, 7, 30, 90, 180, 360]:
+            try:
+                hist = get_hist(coin["ticker"])
+                ticker = yf.ticker.Ticker(coin["ticker"])
+                close = hist["Close"]
                 try:
-                    record[f"{day}d %"] = (
-                        close.iloc[-1] / close.iloc[-day - 1] - 1
-                    ).round(4) * 100
-                except IndexError:
-                    record[f"{day}d %"] = None
-            record["Historical Prices"] = close.values
-            data.append(record)
+                    price = close.iloc[-1]
+                    ath_date = close.idxmax().strftime("%Y-%m-%d")  # type: ignore
+                    ath_pct = (close.iloc[-1] / close.max() - 1).round(4) * 100
+                except Exception:
+                    price = None
+                    ath_date = None
+                    ath_pct = None
+                record = {
+                    "Name": coin["name"],
+                    "Narrative": narrative,
+                    "Market Cap ($M)": int(ticker.info["marketCap"] / 1_000_000),
+                    "Price": price,
+                    "ATH Date": ath_date,
+                    "ATH %": ath_pct,
+                }
+                for day in [1, 7, 30, 90, 180, 360]:
+                    try:
+                        record[f"{day}d %"] = (
+                            close.iloc[-1] / close.iloc[-day - 1] - 1
+                        ).round(4) * 100
+                    except IndexError:
+                        record[f"{day}d %"] = None
+                record["Historical Prices"] = close.values
+                data.append(record)
+            except Exception as exc:
+                breakpoint()  # !!!!!!!!!!
+                logging.exception(f"Error getting {coin}")
     return pd.DataFrame(data)
 
 
