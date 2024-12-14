@@ -6,10 +6,6 @@ from market_watch.utils import display_tickers, set_page_config_once, trading_vi
 
 def main():
     st.markdown("# Market Watch")
-    if is_mobile():
-        st.markdown("Only support desktop")
-        st.write(get_user_agent())
-        return
     chart_cols = st.columns(2)
     with chart_cols[0]:
         interval = st.radio(

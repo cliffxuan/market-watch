@@ -6,10 +6,6 @@ from market_watch.utils import set_page_config_once, trading_view
 
 def main():
     st.markdown("# Crypto")
-    if is_mobile():
-        st.markdown("Only support desktop")
-        st.write(get_user_agent())
-        return
     chart_cols = st.columns(2)
     with chart_cols[0]:
         interval = st.radio(
