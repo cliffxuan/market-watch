@@ -66,7 +66,7 @@ NARRATIVES = {
         {
             "name": "Virtuals Protocol",
             "ticker": "VIRTUAL-USD",
-            "symbol": "VIRTUALUSDT",
+            "symbol": "VIRTUALUSD",
             "exchange": "CRYPTO",
         },
         {
