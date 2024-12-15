@@ -246,12 +246,15 @@ def display_coins(names: list[str]) -> None:
             st.markdown(f"### {data['name']}")
             trading_view(name=data["symbol"], exchange=data.get("exchange", "binance"))
             hist = get_hist(data["ticker"])
-            fig = px.line(hist, x=hist.index, y="Close")
-            fig.update_xaxes(**spike_setting)
-            fig.update_yaxes(**spike_setting)
-            fig.update_layout(hoverdistance=0)
-            st.plotly_chart(fig)
-            st.dataframe(hist)
+            if len(hist) > 0:
+                fig = px.line(hist, x=hist.index, y="Close")
+                fig.update_xaxes(**spike_setting)
+                fig.update_yaxes(**spike_setting)
+                fig.update_layout(hoverdistance=0)
+                st.plotly_chart(fig, key=f"{__name__}.{name}")
+                st.dataframe(hist)
+            else:
+                st.error("no historical price data found from Yahoo Finance")
 
 
 def main() -> None:
