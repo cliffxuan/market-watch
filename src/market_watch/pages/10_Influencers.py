@@ -17,6 +17,7 @@ from googleapiclient.discovery import build
 from pydantic import BaseModel, computed_field
 from youtube_transcript_api import YouTubeTranscriptApi
 
+from market_watch.index_table import search
 from market_watch.utils import auth_required, set_page_config_once
 
 # https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=cliffxuan
@@ -234,6 +235,12 @@ def main() -> None:
         "title",
         "summary",
     ]
+    query = st.text_input(
+        "search",
+        label_visibility="collapsed",
+        placeholder="search",
+    )
+    all_videos_df = search(all_videos_df, query)
     tabs = st.tabs(["Table", "Data"])
     with tabs[0]:
         selected = st.data_editor(
@@ -255,7 +262,7 @@ def main() -> None:
             },
             disabled=cols,
             hide_index=True,
-            height=(len(all_videos) + 1) * 35 + 3,
+            height=(len(all_videos_df) + 1) * 35 + 3,
         )
         ids = list(selected[selected["select"]]["id"])
         for video_id in ids:
