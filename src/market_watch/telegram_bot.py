@@ -15,6 +15,8 @@ from telegram.ext import (
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from market_watch.settings import (
+    ALLOWED_USER_IDS,
+    GPT_MODEL,
     OPENAI_API_KEY,
     TELEGRAM_BOT_TOKEN,
     YOUTUBE_TRANSCRIPT_API_PROXY,
@@ -29,8 +31,13 @@ WAITING_FOR_QUESTION = 1
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
+    if update.effective_user.id not in ALLOWED_USER_IDS:
+        message = "*Sorry, you are not authorized to use this bot\.*"
+        await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN_V2)
+        return
+
     welcome_message = (
         "*Welcome to YouTube Transcript Analyzer\!*\n\n"
         "Send me a YouTube URL and I'll provide:\n"
@@ -101,7 +108,7 @@ def get_summary(transcript: str) -> str:
     """Get summary of the transcript using OpenAI."""
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=GPT_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -125,6 +132,11 @@ def get_summary(transcript: str) -> str:
 
 async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle YouTube URLs sent to the bot."""
+    if update.effective_user.id not in ALLOWED_USER_IDS:
+        message = "*Sorry, you are not authorized to use this bot\.*"
+        await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN_V2)
+        return ConversationHandler.END
+
     url = update.message.text
     video_id = extract_video_id(url)
 
@@ -167,7 +179,7 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=GPT_MODEL,
             messages=[
                 {
                     "role": "system",
