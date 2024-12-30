@@ -1696,6 +1696,7 @@ dependencies = [
     { name = "plotly" },
     { name = "pydantic" },
     { name = "pyportfolioopt" },
+    { name = "python-telegram-bot" },
     { name = "scipy" },
     { name = "statsmodels" },
     { name = "streamlit" },
@@ -1729,6 +1730,7 @@ requires-dist = [
     { name = "plotly" },
     { name = "pydantic" },
     { name = "pyportfolioopt" },
+    { name = "python-telegram-bot", specifier = ">=21.9" },
     { name = "scipy" },
     { name = "statsmodels" },
     { name = "streamlit" },
@@ -2794,6 +2796,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/87/c7/5e1547c44e31da50a460df93af11a535ace568ef89d7a811069ead340c4a/python-slugify-8.0.4.tar.gz", hash = "sha256:59202371d1d05b54a9e7720c5e038f928f45daaffe41dd10822f3907b937c856", size = 10921 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/62/02da182e544a51a5c3ccf4b03ab79df279f9c60c5e82d5e8bec7ca26ac11/python_slugify-8.0.4-py2.py3-none-any.whl", hash = "sha256:276540b79961052b66b7d116620b36518847f52d5fd9e3a70164fc8c50faa6b8", size = 10051 },
+]
+
+[[package]]
+name = "python-telegram-bot"
+version = "21.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/45/a6/369aa090e2c2d34bcfbeadd7d8c75ca2f771424c1a985a98a0adb3712463/python_telegram_bot-21.9.tar.gz", hash = "sha256:82588faca44069492b2aea7f3a5d6212e68884f296b9ccd444658d89170f158d", size = 436648 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9f/4e/b94c6925e3d75a07c3bc8e3f96234c926f627e7ddd05bbf2878e93b3fc15/python_telegram_bot-21.9-py3-none-any.whl", hash = "sha256:6a5e71056fbd138c78dbdefa3c7834d77022622997c60003c9b442061ee91633", size = 662715 },
 ]
 
 [[package]]
