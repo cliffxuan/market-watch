@@ -97,7 +97,12 @@ def get_summary(transcript: str) -> str:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant that provides clear, structured summaries. Format the response in sections using markdown with headings for 'Main Points', 'Key Topics', and 'Summary'.",
+                    "content": """You are a helpful assistant that provides clear, structured summaries. 
+                Format the response in three sections:
+                1. Start each section with "📌 Main Points:", "🔑 Key Topics:", and "📋 Summary:" respectively
+                2. Use simple bullet points with '•' (no nested bullets)
+                3. Don't use any markdown symbols like **, __, #, or other special characters
+                4. Keep formatting minimal and clean""",
                 },
                 {
                     "role": "user",
@@ -116,14 +121,11 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
     video_id = extract_video_id(url)
 
     if not video_id:
-        await update.message.reply_text(
-            "⚠️ Please send a valid YouTube URL\\.", parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await update.message.reply_text("⚠️ Please send a valid YouTube URL.")
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "🔄 *Processing video content*\n_Fetching transcript and generating summary\\.\\.\\._",
-        parse_mode=ParseMode.MARKDOWN_V2,
+        "🔄 Processing video content\nFetching transcript and generating summary..."
     )
 
     transcript = get_transcript(video_id)
@@ -131,14 +133,13 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     # Generate and send summary
     summary = get_summary(transcript)
-    summary_message = f"📋 *Video Analysis*\n\n{escape_markdown(summary)}"
-    await update.message.reply_text(summary_message, parse_mode=ParseMode.MARKDOWN_V2)
+    # Send without markdown parsing to preserve simple formatting
+    await update.message.reply_text(summary)
 
     await update.message.reply_text(
-        "💡 *Ask Questions*\n"
-        "You can now ask specific questions about the content\\.\n"
-        "_Send_ /done _when you're finished\\._",
-        parse_mode=ParseMode.MARKDOWN_V2,
+        "💡 Ask Questions\n"
+        "You can now ask specific questions about the content.\n"
+        "Send /done when you're finished."
     )
     return WAITING_FOR_QUESTION
 
@@ -150,14 +151,11 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not transcript:
         await update.message.reply_text(
-            "⚠️ *Error*: No transcript loaded\\. Please send a YouTube URL first\\.",
-            parse_mode=ParseMode.MARKDOWN_V2,
+            "⚠️ Error: No transcript loaded. Please send a YouTube URL first."
         )
         return ConversationHandler.END
 
-    await update.message.reply_text(
-        "🤔 _Analyzing your question\\.\\.\\._", parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await update.message.reply_text("🤔 Analyzing your question...")
 
     try:
         response = client.chat.completions.create(
@@ -165,7 +163,7 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant answering questions about a video transcript. Base your answers strictly on the transcript content. Format your response using markdown.",
+                    "content": "You are a helpful assistant answering questions about a video transcript. Base your answers strictly on the transcript content. Keep formatting simple and avoid using special characters.",
                 },
                 {
                     "role": "user",
@@ -175,15 +173,11 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         answer = response.choices[0].message.content
-        formatted_answer = f"*Answer:*\n\n{escape_markdown(answer)}"
-        await update.message.reply_text(
-            formatted_answer, parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await update.message.reply_text(f"💬 {answer}")
         return WAITING_FOR_QUESTION
 
     except Exception as e:
-        error_message = f"⚠️ *Error:* {escape_markdown(str(e))}"
-        await update.message.reply_text(error_message, parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text(f"⚠️ Error: {str(e)}")
         return WAITING_FOR_QUESTION
 
 
