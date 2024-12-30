@@ -1,3 +1,4 @@
+from os import getenv
 from urllib.parse import parse_qs, urlparse
 
 from openai import OpenAI
@@ -13,7 +14,11 @@ from telegram.ext import (
 )
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from market_watch.settings import OPENAI_API_KEY, TELEGRAM_BOT_TOKEN
+from market_watch.settings import (
+    OPENAI_API_KEY,
+    TELEGRAM_BOT_TOKEN,
+    YOUTUBE_TRANSCRIPT_API_PROXY,
+)
 
 # Replace with your tokens
 
@@ -50,7 +55,10 @@ def extract_video_id(url: str) -> str:
 def get_transcript(video_id: str) -> str:
     """Get transcript from YouTube video."""
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        https = getenv("YOUTUBE_TRANSCRIPT_API_PROXY") or YOUTUBE_TRANSCRIPT_API_PROXY
+        transcript_list = YouTubeTranscriptApi.get_transcript(
+            video_id, proxies={"https": https}
+        )
         transcript_text = ""
         for segment in transcript_list:
             timestamp = int(segment["start"])
@@ -192,7 +200,7 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-def main():
+def main() -> None:
     """Start the bot."""
     # Create application
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
