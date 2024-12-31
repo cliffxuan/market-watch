@@ -101,13 +101,13 @@ class Video(BaseModel):
             yield cls.process_video(item)
 
     def render(self) -> None:
-        st.markdown(f"- {self.title}")
+        st.text(f"- {self.title}")
         st.markdown(f"[![{self.url}]({self.thumbnail_url})]({self.url})")
         st.markdown(f"Channel: [{self.channel}]({self.channel_url})")
-        st.markdown(f"Description: {escape_markdown(self.description)}")
-        st.markdown(f"Publish Time: {self.publish_time}")
+        st.text(f"Description: {self.description}")
+        st.text(f"Publish Time: {self.publish_time}")
         if self.summary is not None:
-            st.markdown(self.summary)
+            st.text(self.summary)
         else:
             st.error("No captions available")
         if prompt := st.chat_input("ask some question", key=f"chat_input.{self.id}"):
@@ -289,3 +289,7 @@ def escape_markdown(text: str) -> str:
     for char in special_chars:
         text = text.replace(char, f"\\{char}")
     return text
+
+
+def format_summary(summary: str) -> str:
+    summary = summary.replace("•", "-")

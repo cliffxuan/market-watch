@@ -4,6 +4,7 @@ from openai import OpenAI
 
 # Replace with your tokens
 from telegram import Update
+from loguru import logger
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -69,14 +70,15 @@ def get_transcript(video_id: str) -> str:
 
 async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle YouTube URLs sent to the bot."""
-    print("start handle_youtube_url")
     if ALLOWED_USER_IDS and update.effective_user.id not in ALLOWED_USER_IDS:
         message = "*Sorry, you are not authorized to use this bot\.*"
         await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN_V2)
         return ConversationHandler.END
 
     url = update.message.text
+    logger.info(f"start handle_youtube_url url={url}")
     video_id = get_video_id(url)
+    context.user_data["url"] = url
 
     if not video_id:
         await update.message.reply_text("⚠️ Please send a valid YouTube URL.")
@@ -105,8 +107,8 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle user questions about the transcript."""
-    print("start handle_question")
     question = update.message.text
+    logger.info('start handle_question "{question}"')
     transcript = context.user_data.get("transcript", "")
 
     if not transcript:
@@ -143,13 +145,13 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """End the conversation."""
-    print("start done")
     await update.message.reply_text(
         "✅ *Session ended*\n"
         "_Send another YouTube URL whenever you want to analyze a new video\\!_",
         parse_mode=ParseMode.MARKDOWN_V2,
     )
     context.user_data.clear()
+    logger.info(f"finish conversation url={context.user_data.get('url')}")
     return ConversationHandler.END
 
 
