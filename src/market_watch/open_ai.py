@@ -16,7 +16,17 @@ Format the response in three sections:
 2. Use simple bullet points with '•' (no nested bullets)
 3. Don't use any markdown symbols like **, __, #, or other special characters
 4. Keep formatting minimal and clean
-5. If the video is about crypto currency and some coins are mentioned, list the coins and the reason in another section with "🪙 Coins:"
+"""  # noqa: E501
+
+CRYPTO_ANALYSIS_PROMPT = """
+You are a cryptocurrency analysis assistant. Review the text and extract cryptocurrency-related information.
+If no cryptocurrencies are mentioned, respond with an empty string.
+Otherwise, format your response with "🪙 Coins:" followed by bullet points for each cryptocurrency mentioned:
+• {Coin Name}:
+  - Key predictions/points
+  - Price targets and timeframes
+  - Context and reasoning
+Keep formatting minimal and clean, using only bullet points (•) and no special characters.
 """  # noqa: E501
 
 
@@ -43,7 +53,7 @@ def punctuate(transcript: list[dict]) -> str:
 
 
 def summarize(text: str, prompt: str = DEFAULT_SUMMARIZE_PROMPT) -> str:
-    response = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
+    summary = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
         model=GPT_MODEL,
         messages=[
             {
@@ -57,8 +67,14 @@ def summarize(text: str, prompt: str = DEFAULT_SUMMARIZE_PROMPT) -> str:
         ],
         max_tokens=max_tokens_for_summary(text),
     )
-    summary = response.choices[0].message.content.strip()  # type: ignore
-    return summary
+    summary_text = summary.choices[0].message.content.strip()
+
+    # Add crypto analysis if relevant
+    crypto_analysis = analyze_crypto_content(text)
+    if crypto_analysis:
+        summary_text = f"{summary_text}\n\n{crypto_analysis}"
+
+    return summary_text
 
 
 def max_tokens_for_summary(text: str) -> int:
@@ -66,3 +82,22 @@ def max_tokens_for_summary(text: str) -> int:
     Calculate appropriate max tokens for summarization based on input text length
     """
     return min(max(100, len(text) // 4), 1000)
+
+
+def analyze_crypto_content(text: str) -> str:
+    """Analyze text for cryptocurrency-related content."""
+    response = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
+        model=GPT_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": CRYPTO_ANALYSIS_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": text,
+            },
+        ],
+        max_tokens=500,  # Smaller token limit for focused analysis
+    )
+    return response.choices[0].message.content.strip()
