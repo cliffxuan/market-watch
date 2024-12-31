@@ -69,6 +69,7 @@ pyparsing==3.2.0
 pyportfolioopt==1.5.5
 python-dateutil==2.9.0.post0
 python-decouple==3.8
+python-telegram-bot==21.9
 pytz==2024.2
 qdldl==0.1.7.post4
 referencing==0.35.1
