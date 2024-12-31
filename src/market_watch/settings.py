@@ -1,7 +1,7 @@
 import streamlit as st
 
 GPT_MODEL = "gpt-4o-mini"
-ALLOWED_USER_IDS = st.secrets["allowed_user_ids"]
+ALLOWED_USER_IDS = st.secrets.get("allowed_user_ids", [])
 OPENAI_API_KEY = st.secrets["openai_api_key"]
 # https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=cliffxuan
 YOUTUBE_API_KEY = st.secrets["youtube_api_key"]

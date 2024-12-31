@@ -9,6 +9,14 @@ from market_watch.settings import (
     OPENAI_API_KEY,
 )
 
+DEFAULT_SUMMARIZE_PROMPT = """
+You are a helpful assistant that provides clear, structured summaries.
+Format the response in three sections:
+1. Start each section with "📌 Main Points:", "🔑 Key Topics:", and "📋 Summary:" respectively
+2. Use simple bullet points with '•' (no nested bullets)
+3. Don't use any markdown symbols like **, __, #, or other special characters
+4. Keep formatting minimal and clean"""
+
 
 def punctuate(transcript: list[dict]) -> str:
     response = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
@@ -32,18 +40,13 @@ def punctuate(transcript: list[dict]) -> str:
     return summary
 
 
-def summarize(text: str) -> str:
-    print("openai:", openai)
+def summarize(text: str, prompt: str = DEFAULT_SUMMARIZE_PROMPT) -> str:
     response = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
         model=GPT_MODEL,
         messages=[
             {
                 "role": "system",
-                "content": """
-                You are a helpful assistant that summarizes content concisely.
-                If this talks about what coins to invest, list the coins.
-                Return text in markdown format.
-                """,
+                "content": prompt,
             },
             {
                 "role": "user",

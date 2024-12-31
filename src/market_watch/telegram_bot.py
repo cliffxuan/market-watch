@@ -1,5 +1,4 @@
 from os import getenv
-from urllib.parse import parse_qs, urlparse
 
 from openai import OpenAI
 
@@ -21,8 +20,10 @@ from market_watch.settings import (
     GPT_MODEL,
     OPENAI_API_KEY,
     TELEGRAM_BOT_TOKEN,
+    YOUTUBE_API_KEY,
     YOUTUBE_TRANSCRIPT_API_PROXY,
 )
+from market_watch.youtube import Video, get_video_id, get_video_metadata
 
 # Conversation states
 WAITING_FOR_QUESTION = 1
@@ -48,17 +49,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(welcome_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-def extract_video_id(url: str) -> str:
-    """Extract video ID from YouTube URL."""
-    parsed_url = urlparse(url)
-    if parsed_url.hostname == "youtu.be":
-        return parsed_url.path[1:]
-    if parsed_url.hostname in ("www.youtube.com", "youtube.com"):
-        if parsed_url.path == "/watch":
-            return parse_qs(parsed_url.query)["v"][0]
-    return None
-
-
 def get_transcript(video_id: str) -> str:
     """Get transcript from YouTube video."""
     try:
@@ -77,59 +67,6 @@ def get_transcript(video_id: str) -> str:
         return f"Error fetching transcript: {e}"
 
 
-def escape_markdown(text: str) -> str:
-    """Escape special characters for Markdown V2."""
-    special_chars = [
-        "_",
-        "*",
-        "[",
-        "]",
-        "(",
-        ")",
-        "~",
-        "`",
-        ">",
-        "#",
-        "+",
-        "-",
-        "=",
-        "|",
-        "{",
-        "}",
-        ".",
-        "!",
-    ]
-    for char in special_chars:
-        text = text.replace(char, f"\\{char}")
-    return text
-
-
-def get_summary(transcript: str) -> str:
-    """Get summary of the transcript using OpenAI."""
-    try:
-        response = client.chat.completions.create(
-            model=GPT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are a helpful assistant that provides clear, structured summaries. 
-                Format the response in three sections:
-                1. Start each section with "📌 Main Points:", "🔑 Key Topics:", and "📋 Summary:" respectively
-                2. Use simple bullet points with '•' (no nested bullets)
-                3. Don't use any markdown symbols like **, __, #, or other special characters
-                4. Keep formatting minimal and clean""",
-                },
-                {
-                    "role": "user",
-                    "content": f"Please provide a structured summary of this transcript:\n{transcript}",
-                },
-            ],
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"Error generating summary: {str(e)}"
-
-
 async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle YouTube URLs sent to the bot."""
     if ALLOWED_USER_IDS and update.effective_user.id not in ALLOWED_USER_IDS:
@@ -138,7 +75,7 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
 
     url = update.message.text
-    video_id = extract_video_id(url)
+    video_id = get_video_id(url)
 
     if not video_id:
         await update.message.reply_text("⚠️ Please send a valid YouTube URL.")
@@ -148,13 +85,14 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "🔄 Processing video content\nFetching transcript and generating summary..."
     )
 
-    transcript = get_transcript(video_id)
-    context.user_data["transcript"] = transcript
+    metadata = get_video_metadata(video_id, YOUTUBE_API_KEY)
+    video = Video.process_video(metadata)
+    context.user_data["transcript"] = "\n".join(
+        [video.title, video.description, video.captions]
+    )
 
-    # Generate and send summary
-    summary = get_summary(transcript)
     # Send without markdown parsing to preserve simple formatting
-    await update.message.reply_text(summary)
+    await update.message.reply_text(video.summary)
 
     await update.message.reply_text(
         "💡 Ask Questions\n"

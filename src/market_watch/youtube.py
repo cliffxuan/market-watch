@@ -104,11 +104,10 @@ class Video(BaseModel):
         st.markdown(f"- {self.title}")
         st.markdown(f"[![{self.url}]({self.thumbnail_url})]({self.url})")
         st.markdown(f"Channel: [{self.channel}]({self.channel_url})")
-        st.markdown(f"Description: {md_escape(self.description)}")
+        st.markdown(f"Description: {escape_markdown(self.description)}")
         st.markdown(f"Publish Time: {self.publish_time}")
-        if self.captions is not None:
-            # st.markdown(f"Summary: {md_escape(self.summary, multi_line=True)}")
-            st.markdown(f"Summary:\n{self.summary}")
+        if self.summary is not None:
+            st.markdown(f"Summary: {escape_markdown(self.summary)}")
         else:
             st.error("No captions available")
         if prompt := st.chat_input("ask some question", key=f"chat_input.{self.id}"):
@@ -265,8 +264,28 @@ def get_video_metadata(video_id: str, developer_key: str) -> dict:
     ).get("items", [])[0]
 
 
-def md_escape(text: str, multi_line: bool = False) -> str:
-    text = text.replace("$", "\\$")
-    if multi_line:
-        text = text.replace(". ", ".\n\n")
+def escape_markdown(text: str) -> str:
+    """Escape special characters for Markdown V2."""
+    special_chars = [
+        "_",
+        "*",
+        "[",
+        "]",
+        "(",
+        ")",
+        "~",
+        "`",
+        ">",
+        "#",
+        "+",
+        "-",
+        "=",
+        "|",
+        "{",
+        "}",
+        ".",
+        "!",
+    ]
+    for char in special_chars:
+        text = text.replace(char, f"\\{char}")
     return text
