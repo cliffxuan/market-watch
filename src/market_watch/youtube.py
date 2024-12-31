@@ -107,7 +107,7 @@ class Video(BaseModel):
         st.markdown(f"Description: {escape_markdown(self.description)}")
         st.markdown(f"Publish Time: {self.publish_time}")
         if self.summary is not None:
-            st.markdown(f"Summary: {escape_markdown(self.summary)}")
+            st.markdown(self.summary)
         else:
             st.error("No captions available")
         if prompt := st.chat_input("ask some question", key=f"chat_input.{self.id}"):

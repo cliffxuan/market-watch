@@ -69,6 +69,7 @@ def get_transcript(video_id: str) -> str:
 
 async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle YouTube URLs sent to the bot."""
+    print("start handle_youtube_url")
     if ALLOWED_USER_IDS and update.effective_user.id not in ALLOWED_USER_IDS:
         message = "*Sorry, you are not authorized to use this bot\.*"
         await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN_V2)
@@ -88,7 +89,7 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
     metadata = get_video_metadata(video_id, YOUTUBE_API_KEY)
     video = Video.process_video(metadata)
     context.user_data["transcript"] = "\n".join(
-        [video.title, video.description, video.captions]
+        [item for item in [video.title, video.description, video.captions] if item]
     )
 
     # Send without markdown parsing to preserve simple formatting
@@ -104,6 +105,7 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle user questions about the transcript."""
+    print("start handle_question")
     question = update.message.text
     transcript = context.user_data.get("transcript", "")
 
@@ -139,8 +141,9 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return WAITING_FOR_QUESTION
 
 
-async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """End the conversation."""
+    print("start done")
     await update.message.reply_text(
         "✅ *Session ended*\n"
         "_Send another YouTube URL whenever you want to analyze a new video\\!_",

@@ -1,20 +1,13 @@
 from __future__ import annotations
 
-import textwrap
-
-import openai
 import pandas as pd
 import streamlit as st
 from googleapiclient.discovery import build
 
 from market_watch.index_table import search
-from market_watch.settings import (
-    GPT_MODEL,
-    OPENAI_API_KEY,
-    YOUTUBE_API_KEY,
-)
+from market_watch.settings import YOUTUBE_API_KEY
 from market_watch.utils import auth_required, set_page_config_once
-from market_watch.youtube import CHANNELS, Video, md_escape
+from market_watch.youtube import CHANNELS, Video
 
 
 @st.cache_data(ttl="2h")
