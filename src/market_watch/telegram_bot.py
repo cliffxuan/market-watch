@@ -2,6 +2,8 @@ from os import getenv
 from urllib.parse import parse_qs, urlparse
 
 from openai import OpenAI
+
+# Replace with your tokens
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -22,8 +24,6 @@ from market_watch.settings import (
     YOUTUBE_TRANSCRIPT_API_PROXY,
 )
 
-# Replace with your tokens
-
 # Conversation states
 WAITING_FOR_QUESTION = 1
 
@@ -33,7 +33,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
-    if update.effective_user.id not in ALLOWED_USER_IDS:
+    if ALLOWED_USER_IDS and update.effective_user.id not in ALLOWED_USER_IDS:
         message = "*Sorry, you are not authorized to use this bot\.*"
         await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN_V2)
         return
@@ -74,7 +74,7 @@ def get_transcript(video_id: str) -> str:
             transcript_text += f"[{minutes:02d}:{seconds:02d}] {segment['text']}\n"
         return transcript_text
     except Exception as e:
-        return f"Error fetching transcript: {str(e)}"
+        return f"Error fetching transcript: {e}"
 
 
 def escape_markdown(text: str) -> str:
@@ -132,7 +132,7 @@ def get_summary(transcript: str) -> str:
 
 async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle YouTube URLs sent to the bot."""
-    if update.effective_user.id not in ALLOWED_USER_IDS:
+    if ALLOWED_USER_IDS and update.effective_user.id not in ALLOWED_USER_IDS:
         message = "*Sorry, you are not authorized to use this bot\.*"
         await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN_V2)
         return ConversationHandler.END
