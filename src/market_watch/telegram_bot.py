@@ -1,10 +1,10 @@
 from os import getenv
 
+from loguru import logger
 from openai import OpenAI
 
 # Replace with your tokens
 from telegram import Update
-from loguru import logger
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -108,7 +108,15 @@ async def handle_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle user questions about the transcript."""
     question = update.message.text
-    logger.info('start handle_question "{question}"')
+    logger.info(f'start handle_question "{question}"')
+
+    if get_video_id(question):
+        await update.message.reply_text(
+            f"⚠️ New video {question} sent before finishing the last one."
+            "Please end the last session with /done first."
+        )
+        return WAITING_FOR_QUESTION
+
     transcript = context.user_data.get("transcript", "")
 
     if not transcript:
@@ -139,7 +147,7 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return WAITING_FOR_QUESTION
 
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Error: {str(e)}")
+        await update.message.reply_text(f"⚠️ Error: {e}")
         return WAITING_FOR_QUESTION
 
 

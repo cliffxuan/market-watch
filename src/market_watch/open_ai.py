@@ -16,7 +16,7 @@ Format the response in three sections:
 2. Use simple bullet points with '•' (no nested bullets)
 3. Don't use any markdown symbols like **, __, #, or other special characters
 4. Keep formatting minimal and clean
-5. If some coins are mentioned, list the coins and the reason in another section with "🪙 Coins:"
+5. If the video is about crypto currency and some coins are mentioned, list the coins and the reason in another section with "🪙 Coins:"
 """  # noqa: E501
 
 
