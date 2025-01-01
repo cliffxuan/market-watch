@@ -1,6 +1,5 @@
 import streamlit as st
 
-from market_watch.js_eval import get_user_agent, is_mobile
 from market_watch.utils import display_tickers, set_page_config_once, trading_view
 
 
@@ -45,12 +44,11 @@ def main():
         )  # SP:SPX only avail from tradingview
         trading_view("GOLD", "TVC", **kwargs)
         trading_view("USOIL", "TVC", **kwargs)
-        trading_view("UNRATE", "FRED", **kwargs)
-        
+
     with chart_cols[-1]:
         trading_view("DXY", "INDEX", **kwargs)
         trading_view("BLX", "BNC", **kwargs)
-        trading_view("USINTR", "ECONOMICS", **kwargs)
+        trading_view("UNRATE", "FRED", **kwargs)
 
     display_tickers(["SPX", "DXY", "GOLD", "BTC"], show_details=False, optimize=False)
 
