@@ -2,25 +2,18 @@ from __future__ import annotations
 
 import datetime as dt
 import html
-import json
-import logging
 import re
-import textwrap
-from functools import cached_property
-from hashlib import md5
 from pathlib import Path
-from typing import Generator
+from typing import ClassVar, Generator, Optional
 
-import openai
 import streamlit as st
 from googleapiclient.discovery import build
-from pydantic import BaseModel, computed_field
+from pydantic import computed_field
+from sqlmodel import Field, Session, SQLModel, create_engine
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from market_watch.open_ai import summarize
+from market_watch.open_ai import answer_transcript_question, summarize
 from market_watch.settings import (
-    GPT_MODEL,
-    OPENAI_API_KEY,
     YOUTUBE_API_KEY,
     YOUTUBE_TRANSCRIPT_API_PROXY,
 )
@@ -46,27 +39,25 @@ STORE = PWD.parent.parent / ".store"
 STORE.mkdir(exist_ok=True)
 
 
-class Video(BaseModel):
-    id: str
+class Video(SQLModel, table=True):
+    """YouTube video model with SQLite storage."""
+
+    # Allow table redefinition
+    __table_args__: ClassVar = {"extend_existing": True}
+
+    # Required fields
+    id: str = Field(primary_key=True)
     title: str
     description: str
     channel: str
     publish_time: dt.datetime
     thumbnail_url: str
 
-    @computed_field
-    @cached_property
-    def captions(self) -> str | None:
-        return get_video_captions(self.id, YOUTUBE_TRANSCRIPT_API_PROXY)
+    # Optional cached fields
+    captions: Optional[str] = Field(default=None)
+    summary: Optional[str] = Field(default=None)
 
-    @computed_field
-    @cached_property
-    def summary(self) -> str | None:
-        if self.captions is not None:
-            return summarize_text(
-                "\n".join([self.title, self.description, self.captions])
-            )
-
+    # Computed fields (not stored in DB)
     @computed_field
     def url(self) -> str:
         return f"https://youtube.com/watch?v={self.id}"
@@ -76,24 +67,47 @@ class Video(BaseModel):
         return f"https://youtube.com/{self.channel}"
 
     @classmethod
-    def process_video(cls, item: dict) -> Video:
-        video = cls.model_validate(
-            {
-                "id": (
-                    item["id"]["videoId"]
-                    if isinstance(item["id"], dict)
-                    else item["id"]
-                ),
-                "title": html.unescape(item["snippet"]["title"]),
-                "description": item["snippet"]["description"],
-                "thumbnail_url": item["snippet"]["thumbnails"]["default"]["url"],
-                "channel": get_channel(item["snippet"]["channelId"], YOUTUBE_API_KEY),
-                "publish_time": item["snippet"]["publishedAt"],
-            }
-        )
-        if video.summary is not None:
-            logging.info("succeed getting summary for vidoe")
-        return video
+    def process_video(cls, item: dict) -> "Video":
+        """Create or update a Video instance from YouTube API response."""
+        video_id = item["id"]["videoId"] if isinstance(item["id"], dict) else item["id"]
+
+        with Session(engine) as session:
+            # Try to get existing video
+            video = session.get(Video, video_id)
+
+            if video is None:
+                # Create new video
+                # Convert publish_time string to datetime object
+                publish_time = dt.datetime.fromisoformat(
+                    item["snippet"]["publishedAt"].replace("Z", "+00:00")
+                )
+
+                video = cls(
+                    id=video_id,
+                    title=html.unescape(item["snippet"]["title"]),
+                    description=item["snippet"]["description"],
+                    thumbnail_url=item["snippet"]["thumbnails"]["default"]["url"],
+                    channel=get_channel(item["snippet"]["channelId"], YOUTUBE_API_KEY),
+                    publish_time=publish_time,  # Now using datetime object
+                )
+                session.add(video)
+
+            # Update captions if not already cached
+            if video.captions is None:
+                video.captions = get_video_captions(
+                    video_id, YOUTUBE_TRANSCRIPT_API_PROXY
+                )
+
+            # Update summary if we have captions but no summary
+            if video.captions and video.summary is None:
+                video.summary = summarize(
+                    "\n".join([video.title, video.description, video.captions])
+                )
+
+            session.commit()
+            session.refresh(video)
+
+            return video
 
     @classmethod
     def process_videos(cls, data: list[dict]) -> Generator[Video, None, None]:
@@ -106,39 +120,47 @@ class Video(BaseModel):
         st.markdown(f"Channel: [{self.channel}]({self.channel_url})")
         st.text(f"Description: {self.description}")
         st.text(f"Publish Time: {self.publish_time}")
-        if self.summary is not None:
+
+        if self.summary:
             st.text(self.summary)
         else:
             st.error("No captions available")
-        if prompt := st.chat_input("ask some question", key=f"chat_input.{self.id}"):
-            messages = st.container(height=300)
-            messages.chat_message("user").write(prompt)
-            response = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
-                model=GPT_MODEL,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """
-            You are a helpful assistant that answers questions precisely.
-            """,
-                    },
-                    {
-                        "role": "user",
-                        "content": textwrap.dedent(
-                            f"""
-            answer question "{prompt}"
-            context: {self.model_dump_json()}
-            """.strip()
-                        ),
-                    },
-                ],
-            )
-            messages.chat_message("assistant").write(
-                response.choices[0].message.content.strip()
-            )
 
-        with st.expander("data"):
-            st.json(self.model_dump())
+        # Chat interface
+        if self.captions:  # Only show chat if we have captions
+            st.markdown("---")
+            st.markdown("💬 **Ask questions about the video**")
+
+            if prompt := st.chat_input(
+                "Ask a question about the video content...",
+                key=f"chat_input.{self.id}",
+            ):
+                messages = st.container(height=300)
+                messages.chat_message("user").write(prompt)
+
+                # Use the dedicated question answering function
+                answer = answer_transcript_question(
+                    "\n".join(
+                        [
+                            f"Title: {self.title}",
+                            f"Description: {self.description}",
+                            f"Transcript: {self.captions}",
+                        ]
+                    ),
+                    prompt,
+                )
+
+                messages.chat_message("assistant").write(answer)
+        else:
+            st.info("Chat is unavailable without video captions")
+
+        # Debug data
+        with st.expander("Debug Data"):
+            st.json(
+                self.model_dump(
+                    include={"id", "title", "channel", "publish_time", "url"}
+                )
+            )
 
 
 def get_channel(channel_id: str, developer_key: str) -> str:
@@ -161,20 +183,7 @@ def max_tokens_for_summary(text: str) -> int:
 
 
 def get_video_captions(video_id: str, proxy: str | None = None) -> str | None:
-    """
-    Retrieve captions for a given video
-
-    :param video_id: YouTube video ID
-    :return: Full caption text or None
-    """
-    file_path = STORE / "captions.json"
-    try:
-        with file_path.open("r") as f:
-            all_captions = json.loads(f.read())
-    except FileNotFoundError:
-        all_captions = {}
-    if video_id in all_captions:
-        return all_captions[video_id]
+    """Retrieve captions for a given video."""
     try:
         if proxy is None:
             transcript = YouTubeTranscriptApi.get_transcript(video_id)
@@ -182,42 +191,10 @@ def get_video_captions(video_id: str, proxy: str | None = None) -> str | None:
             transcript = YouTubeTranscriptApi.get_transcript(
                 video_id, proxies={"https": proxy}
             )
-        captions = " ".join([entry["text"] for entry in transcript])
-        all_captions[video_id] = captions
-        with file_path.open("w") as f:
-            f.write(json.dumps(all_captions))
-        return captions
+        return " ".join([entry["text"] for entry in transcript])
     except Exception as e:
         print(f"Could not retrieve captions for {video_id}: {e}")
         return None
-
-
-def summarize_text(text: str) -> str:
-    """
-    Summarize text using OpenAI API
-
-    :param text: Text to summarize
-    :param max_length: Maximum summary length
-    :return: Summary of the text
-    """
-    hash_key = md5(text.encode("utf-8")).hexdigest()
-    file_path = STORE / "summary.json"
-    try:
-        with file_path.open("r") as f:
-            all_summaries = json.loads(f.read())
-    except FileNotFoundError:
-        all_summaries = {}
-    if hash_key in all_summaries:
-        return all_summaries[hash_key]
-    try:
-        summary = summarize(text)
-        all_summaries[hash_key] = summary
-        with file_path.open("w") as f:
-            f.write(json.dumps(all_summaries))
-        return summary
-    except Exception as e:
-        print(f"Summarization error: {e}")
-        return "Could not generate summary."
 
 
 def get_transcript(
@@ -253,6 +230,9 @@ def get_video_id(url: str) -> str | None:
 
 
 def get_video_metadata(video_id: str, developer_key: str) -> dict:
+    """
+    https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas
+    """
     youtube = build("youtube", "v3", developerKey=developer_key)
     return (
         youtube.videos()
@@ -291,5 +271,17 @@ def escape_markdown(text: str) -> str:
     return text
 
 
-def format_summary(summary: str) -> str:
-    summary = summary.replace("•", "-")
+# Setup database
+engine = create_engine(f"sqlite:///{STORE}/videos.db", echo=True)
+
+
+def init_db() -> None:
+    """Initialize database and create tables."""
+    # Clear any existing table definitions
+    # SQLModel.metadata.clear()
+    # Create all tables if they don't exist
+    SQLModel.metadata.create_all(engine)
+
+
+# Initialize database on module load
+init_db()

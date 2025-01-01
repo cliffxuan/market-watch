@@ -4,10 +4,7 @@ import json
 
 import openai
 
-from market_watch.settings import (
-    GPT_MODEL,
-    OPENAI_API_KEY,
-)
+from market_watch.settings import GPT_MODEL, OPENAI_API_KEY
 
 DEFAULT_SUMMARIZE_PROMPT = """
 You are a helpful assistant that provides clear, structured summaries.
@@ -28,6 +25,12 @@ Otherwise, format your response with "🪙 Coins:" followed by bullet points for
   - Context and reasoning
 Keep formatting minimal and clean, using only bullet points (•) and no special characters.
 """  # noqa: E501
+
+TRANSCRIPT_QA_PROMPT = """
+You are a helpful assistant answering questions about a video transcript.
+Base your answers strictly on the transcript content.
+Keep formatting simple and avoid using special characters.
+"""
 
 
 def punctuate(transcript: list[dict]) -> str:
@@ -99,5 +102,34 @@ def analyze_crypto_content(text: str) -> str:
             },
         ],
         max_tokens=500,  # Smaller token limit for focused analysis
+    )
+    return response.choices[0].message.content.strip()
+
+
+# Add new function for handling transcript questions
+def answer_transcript_question(transcript: str, question: str) -> str:
+    """
+    Answer a question about a transcript using OpenAI.
+
+    Args:
+        transcript: The video transcript text
+        question: The user's question
+
+    Returns:
+        str: AI generated answer to the question
+    """
+    response = openai.OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
+        model=GPT_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": TRANSCRIPT_QA_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": f"Here's a transcript:\n{transcript}"
+                f"\n\nQuestion: {question}",
+            },
+        ],
     )
     return response.choices[0].message.content.strip()

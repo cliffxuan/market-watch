@@ -1,7 +1,6 @@
 from os import getenv
 
 from loguru import logger
-from openai import OpenAI
 
 # Replace with your tokens
 from telegram import Update
@@ -16,10 +15,9 @@ from telegram.ext import (
 )
 from youtube_transcript_api import YouTubeTranscriptApi
 
+from market_watch.open_ai import answer_transcript_question
 from market_watch.settings import (
     ALLOWED_USER_IDS,
-    GPT_MODEL,
-    OPENAI_API_KEY,
     TELEGRAM_BOT_TOKEN,
     YOUTUBE_API_KEY,
     YOUTUBE_TRANSCRIPT_API_PROXY,
@@ -28,9 +26,6 @@ from market_watch.youtube import Video, get_video_id, get_video_metadata
 
 # Conversation states
 WAITING_FOR_QUESTION = 1
-
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -128,21 +123,7 @@ async def handle_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🤔 Analyzing your question...")
 
     try:
-        response = client.chat.completions.create(
-            model=GPT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant answering questions about a video transcript. Base your answers strictly on the transcript content. Keep formatting simple and avoid using special characters.",
-                },
-                {
-                    "role": "user",
-                    "content": f"Here's a transcript:\n{transcript}\n\nQuestion: {question}",
-                },
-            ],
-        )
-
-        answer = response.choices[0].message.content
+        answer = answer_transcript_question(transcript, question)
         await update.message.reply_text(f"💬 {answer}")
         return WAITING_FOR_QUESTION
 

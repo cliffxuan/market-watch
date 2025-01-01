@@ -12,6 +12,9 @@ from market_watch.youtube import CHANNELS, Video
 
 @st.cache_data(ttl="2h")
 def get_latest_videos(channel_id: str, limit: int = 5) -> list[dict]:
+    """
+    https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas
+    """
     return (
         build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
         .search()
