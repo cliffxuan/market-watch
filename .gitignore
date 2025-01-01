@@ -1,5 +1,6 @@
 !data/info.json.gz
 data/info.json
+data/*.sqlite3
 etl/prefect-server/data/
 .store/
 .streamlit/

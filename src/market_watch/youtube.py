@@ -35,8 +35,7 @@ CHANNELS = {
 CHANNELS_REVERSE = {v: k for k, v in CHANNELS.items()}
 
 PWD = Path(__file__).absolute().parent
-STORE = PWD.parent.parent / ".store"
-STORE.mkdir(exist_ok=True)
+DATA_DIR = PWD.parent.parent / "data"
 
 
 class Video(SQLModel, table=True):
@@ -272,7 +271,7 @@ def escape_markdown(text: str) -> str:
 
 
 # Setup database
-engine = create_engine(f"sqlite:///{STORE}/videos.db", echo=True)
+engine = create_engine(f"sqlite:///{DATA_DIR}/db.sqlite3", echo=True)
 
 
 def init_db() -> None:

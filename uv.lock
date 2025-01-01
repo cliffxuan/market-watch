@@ -1748,7 +1748,7 @@ requires-dist = [
     { name = "pyportfolioopt" },
     { name = "python-telegram-bot", specifier = ">=21.9" },
     { name = "scipy" },
-    { name = "sqlmodel", specifier = ">=0.0.22" },
+    { name = "sqlmodel", specifier = ">=0.0.16" },
     { name = "statsmodels" },
     { name = "streamlit" },
     { name = "streamlit-aggrid" },
