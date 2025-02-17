@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> None:
                 "need a csv file. copy and paste from"
                 " https://www.nasdaq.com/market-activity/quotes/nasdaq-ndx-index"
             )
-        companies = pd.read_csv(args.file, sep="\t")
+        companies = pd.read_csv(args.file, sep="\t")[["Symbol", "Name"]]
     else:
         raise Exception(f"unsupported list type {args.type}")
     companies.to_csv(DATA_DIR / "raw" / f"{args.type}.csv", index=False)
