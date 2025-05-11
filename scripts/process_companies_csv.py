@@ -12,6 +12,7 @@ import argparse
 from pathlib import Path
 
 import pandas as pd
+from curl_cffi import requests
 
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent / "data"
@@ -19,35 +20,47 @@ DATA_DIR = PWD.parent / "data"
 TYPES = ["spx-500", "nasdaq-100"]
 
 
+def get_spx_500() -> pd.DataFrame:
+    return pd.read_csv(
+        "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+    )
+
+
+def get_nasdaq_100() -> pd.DataFrame:
+    print("Fetching NASDAQ-100 constituents...")
+    api_url = "https://api.nasdaq.com/api/quote/list-type/nasdaq100"
+    response = requests.get(api_url, impersonate="chrome")
+    response.raise_for_status()
+    data = response.json()
+    constituents = pd.DataFrame(data["data"]["data"]["rows"])
+    # Convert marketCap to integer
+    constituents["marketCap"] = (
+        constituents["marketCap"].replace({r"\$": "", ",": ""}, regex=True).astype(int)
+    )
+    # Sort by marketCap in descending order
+    constituents = constituents.sort_values(by="marketCap", ascending=False)
+    print(f"Retrieved {len(constituents)} constituents from alternative source")
+    print("\nTop 5 constituents:")
+    print(constituents.head())
+    return constituents
+
+
 def argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="process nasdaq 100")
-    parser.add_argument(
-        "--file",
-        "-f",
-        type=argparse.FileType("r"),
-        help="name of the file to convert",
-    )
     parser.add_argument("--type", "-t", choices=TYPES, help="name of the list type")
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
     args = argument_parser().parse_args(argv)
-    if args.type == "spx-500":
-        companies = pd.read_csv(
-            "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
-        )
+    if args.type in ("spx-500", None):
+        companies = get_spx_500()
         companies["Symbol"] = companies["Symbol"].apply(lambda x: x.replace(".", "-"))
-    elif args.type == "nasdaq-100":
-        if not args.file:
-            raise ValueError(
-                "need a csv file. copy and paste from"
-                " https://www.nasdaq.com/market-activity/quotes/nasdaq-ndx-index"
-            )
-        companies = pd.read_csv(args.file, sep="\t")[["Symbol", "Name"]]
-    else:
-        raise Exception(f"unsupported list type {args.type}")
-    companies.to_csv(DATA_DIR / "raw" / f"{args.type}.csv", index=False)
+        companies.to_csv(DATA_DIR / "raw" / "spx-500.csv", index=False)
+    if args.type in ("nasdaq-100", None):
+        companies = get_nasdaq_100()
+        companies.columns = [col.capitalize() for col in companies.columns]
+        companies.to_csv(DATA_DIR / "raw" / "nasdaq-100.csv", index=False)
 
 
 if __name__ == "__main__":
