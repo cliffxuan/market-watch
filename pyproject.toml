@@ -2,9 +2,7 @@
 name = "market-watch"
 version = "0.1.0"
 description = "Watch the market"
-authors = [
-    { name = "Cliff Xuan", email = "cliff.xuan@gmail.com" }
-]
+authors = [{ name = "Cliff Xuan", email = "cliff.xuan@gmail.com" }]
 dependencies = [
     "streamlit",
     "yfinance",
@@ -23,6 +21,7 @@ dependencies = [
     "python-telegram-bot>=21.9",
     "loguru>=0.7.3",
     "sqlmodel>=0.0.16",
+    "curl-cffi>=0.10.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.11"
@@ -62,16 +61,63 @@ line-length = 88
 line-ending = "lf"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "PL", "C", "RUF", "PYI", "YTT", "N", "ANN", "A", "PYI", "Q", "TD", "ICN"]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "PL",
+    "C",
+    "RUF",
+    "PYI",
+    "YTT",
+    "N",
+    "ANN",
+    "A",
+    "PYI",
+    "Q",
+    "TD",
+    "ICN",
+]
 ignore = ["ANN101", "ANN102", "ANN204", "TD003"]
 ignore-init-module-imports = true
 fixable = ["I", "F401"]
 
 [tool.ruff.per-file-ignores]
-"*tests/*" = ["ANN001", "ANN201", "ANN401", "ANN202", "PLR0913", "PLR2004", "E501"]
-"*_test.py" = ["ANN001", "ANN201", "ANN401", "ANN202", "PLR0913", "PLR2004", "E501"]
-"conftest.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN401", "ANN202", "PLR0913", "PLR2004", "E501"]
+"*tests/*" = [
+    "ANN001",
+    "ANN201",
+    "ANN401",
+    "ANN202",
+    "PLR0913",
+    "PLR2004",
+    "E501",
+]
+"*_test.py" = [
+    "ANN001",
+    "ANN201",
+    "ANN401",
+    "ANN202",
+    "PLR0913",
+    "PLR2004",
+    "E501",
+]
+"conftest.py" = [
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "ANN201",
+    "ANN401",
+    "ANN202",
+    "PLR0913",
+    "PLR2004",
+    "E501",
+]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 known-first-party = ["src", "tests"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"

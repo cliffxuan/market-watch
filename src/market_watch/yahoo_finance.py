@@ -1,20 +1,14 @@
 from functools import lru_cache
 from urllib.parse import quote_plus
 
-import requests
+from curl_cffi import requests
 
 Cookies = tuple[tuple[str, str | None], ...]
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/58.0.3029.110 Safari/537.36"
-}
 
 
 @lru_cache
 def get_cookies() -> Cookies:
-    response = requests.get("https://fc.yahoo.com", headers=HEADERS)
+    response = requests.get("https://fc.yahoo.com", impersonate="chrome")
     if not response.cookies:
         raise Exception("Failed to obtain Yahoo auth cookie.")
     return tuple(response.cookies.items())
@@ -24,7 +18,7 @@ def get_cookies() -> Cookies:
 def get_crumb(cookies: Cookies) -> str:
     response = requests.get(
         "https://query1.finance.yahoo.com/v1/test/getcrumb",
-        headers=HEADERS,
+        impersonate="chrome",
         cookies=dict(cookies),
     )
     response.raise_for_status()
@@ -53,6 +47,6 @@ def get_info(ticker: str, modules: list[str] | None = None) -> dict:
         f"{ticker}?formatted=true&crumb={crumb}&lang=en-US"
         f"&modules={quote_plus(','.join(modules or default_modules))}"
     )
-    response = requests.get(url, headers=HEADERS, cookies=dict(cookies))
+    response = requests.get(url, impersonate="chrome", cookies=dict(cookies))
     response.raise_for_status()
     return response.json()["quoteSummary"]["result"][0]
