@@ -1,102 +1,102 @@
 Symbol,Sector,Companyname,Marketcap,Lastsaleprice,Netchange,Percentagechange,Deltaindicator
-MSFT,,Microsoft Corporation Common Stock,3530161034120,$474.96,$3.91,-0.82%,down
-NVDA,,NVIDIA Corporation Common Stock,3464068000000,$141.97,$3.03,-2.09%,down
-AAPL,,Apple Inc. Common Stock,2934143017700,$196.45,$2.75,-1.38%,down
-AMZN,,"Amazon.com, Inc. Common Stock",2251728345525,$212.10,$1.14,-0.53%,down
-GOOG,,Alphabet Inc. Class C Capital Stock,2134303800000,$175.88,$1.09,-0.62%,down
-GOOGL,,Alphabet Inc. Class A Common Stock,2119620450000,$174.67,$1.03,-0.59%,down
-META,,"Meta Platforms, Inc. Class A Common Stock",1716958648525,$682.87,$10.49,-1.51%,down
-AVGO,,Broadcom Inc. Common Stock,1169753232477,$248.70,$7.37,-2.88%,down
-TSLA,,"Tesla, Inc. Common Stock",1047809265000,$325.31,$6.20,+1.94%,up
-NFLX,,"Netflix, Inc. Common Stock",515991903002,"$1,212.15",$2.88,-0.24%,down
-COST,,Costco Wholesale Corporation Common Stock,439135445328,$990.21,$12.50,-1.25%,down
-PLTR,,Palantir Technologies Inc. Class A Common Stock,324251963348,$137.40,$2.21,+1.63%,up
-ASML,,ASML Holding N.V. New York Registry Shares,299288910920,$761.00,$25.21,-3.21%,down
-TMUS,,"T-Mobile US, Inc. Common Stock",258881484624,$228.00,$0.70,-0.31%,down
-CSCO,,"Cisco Systems, Inc. Common Stock (DE)",253796283356,$64.09,$1.01,-1.55%,down
-AZN,,AstraZeneca PLC American Depositary Shares,230797027196,$74.42,$0.58,-0.77%,down
-LIN,,Linde plc Ordinary Shares,219613673646,$465.98,$4.55,-0.97%,down
-INTU,,Intuit Inc. Common Stock,210320459060,$753.98,$12.23,-1.60%,down
-AMD,,"Advanced Micro Devices, Inc. Common Stock",188342311291,$116.16,$2.34,-1.97%,down
-ISRG,,"Intuitive Surgical, Inc. Common Stock",183574661846,$512.18,$0.82,-0.16%,down
-PEP,,"PepsiCo, Inc. Common Stock",179405757809,$130.85,$1.45,-1.10%,down
-TXN,,Texas Instruments Incorporated Common Stock,177152055405,$195.00,$4.66,-2.33%,down
-BKNG,,Booking Holdings Inc. Common Stock,172411076052,"$5,298.38",$163.57,-2.99%,down
-QCOM,,QUALCOMM Incorporated Common Stock,169882560000,$154.72,$3.98,-2.51%,down
-ADBE,,Adobe Inc. Common Stock,167090688000,$391.68,$22.00,-5.32%,down
-AMGN,,Amgen Inc. Common Stock,158741600156,$295.22,$2.07,-0.70%,down
-HON,,Honeywell International Inc. Common Stock,144147349660,$224.29,$1.76,-0.78%,down
-ARM,,Arm Holdings plc American Depositary Shares,143583235064,$135.55,$3.07,-2.21%,down
-PDD,,PDD Holdings Inc. American Depositary Shares,142788041148,$100.58,$2.85,-2.76%,down
-AMAT,,"Applied Materials, Inc. Common Stock",136898170838,$170.59,$4.41,-2.52%,down
-GILD,,"Gilead Sciences, Inc. Common Stock",136807324728,$109.98,$1.28,-1.15%,down
-SHOP,,Shopify Inc. Class A Subordinate Voting Shares,136693802211,$105.34,$3.87,-3.54%,down
-PANW,,"Palo Alto Networks, Inc. Common Stock",130872836000,$196.27,$1.40,-0.71%,down
-CMCSA,,Comcast Corporation Class A Common Stock,130716974484,$35.01,$0.26,-0.74%,down
-MU,,"Micron Technology, Inc. Common Stock",129191268290,$115.60,$0.58,-0.50%,down
-ADP,,"Automatic Data Processing, Inc. Common Stock",124545217848,$306.82,$1.39,-0.45%,down
-APP,,Applovin Corporation Class A Common Stock,123338626601,$364.49,$16.09,-4.23%,down
-MELI,,"MercadoLibre, Inc. Common Stock",120253159553,"$2,371.98",$3.16,+0.13%,up
-CRWD,,"CrowdStrike Holdings, Inc. Class A Common Stock",119793657388,$480.62,$1.11,-0.23%,down
-VRTX,,Vertex Pharmaceuticals Incorporated Common Stock,116958278819,$455.45,$4.61,-1.00%,down
-KLAC,,KLA Corporation Common Stock,114741921568,$867.67,$7.33,-0.84%,down
-LRCX,,Lam Research Corporation Common Stock,114506643360,$89.52,$2.14,-2.33%,down
-ADI,,"Analog Devices, Inc. Common Stock",111670731546,$225.03,$7.09,-3.05%,down
-MSTR,,MicroStrategy Incorporated Common Stock Class A,106951706381,$382.87,$3.11,+0.82%,up
-SBUX,,Starbucks Corporation Common Stock,105980664000,$93.26,$1.06,-1.12%,down
-CEG,,Constellation Energy Corporation Common Stock ,93050482979,$296.89,$3.49,-1.16%,down
-DASH,,"DoorDash, Inc. Class A Common Stock",92783013610,$218.96,$2.36,+1.09%,up
-CTAS,,Cintas Corporation Common Stock,89632630047,$221.98,$1.59,-0.71%,down
-INTC,,Intel Corporation Common Stock,87850680000,$20.14,$0.63,-3.03%,down
-MDLZ,,"Mondelez International, Inc. Class A Common Stock",86661992915,$66.93,$1.19,-1.75%,down
-ABNB,,"Airbnb, Inc. Class A Common Stock",84903984813,$135.54,$3.27,-2.36%,down
-CDNS,,"Cadence Design Systems, Inc. Common Stock",81912600000,$300.00,$7.85,-2.55%,down
-FTNT,,"Fortinet, Inc. Common Stock",77176941258,$100.83,$0.83,-0.82%,down
-ORLY,,"O'Reilly Automotive, Inc. Common Stock",76858444210,$89.91,$1.14,-1.25%,down
-SNPS,,"Synopsys, Inc. Common Stock",74300366771,$478.86,$16.13,-3.26%,down
-MAR,,Marriott International Class A Common Stock,69840771384,$254.99,$8.24,-3.13%,down
-PYPL,,"PayPal Holdings, Inc. Common Stock",68884500278,$70.83,$3.98,-5.32%,down
-WDAY,,"Workday, Inc. Class A Common Stock",65292180000,$244.54,$6.15,-2.45%,down
-ADSK,,"Autodesk, Inc. Common Stock",62522240000,$292.16,$6.41,-2.15%,down
-MNST,,Monster Beverage Corporation,61499022787,$63.06,$0.63,-0.99%,down
-AXON,,"Axon Enterprise, Inc. Common Stock",60772679372,$780.63,$5.43,+0.70%,up
-CSX,,CSX Corporation Common Stock,60338893377,$32.12,$0.27,-0.83%,down
-ROP,,"Roper Technologies, Inc. Common Stock",60289258868,$560.75,$11.28,-1.97%,down
-MRVL,,"Marvell Technology, Inc. Common Stock",57931218000,$67.19,$2.45,-3.52%,down
-REGN,,"Regeneron Pharmaceuticals, Inc. Common Stock",57139659632,$529.24,$7.40,+1.42%,up
-PAYX,,"Paychex, Inc. Common Stock",55188414151,$153.22,$0.27,-0.18%,down
-AEP,,"American Electric Power Company, Inc. Common Stock",54968668175,$102.90,$0.12,-0.12%,down
-CHTR,,"Charter Communications, Inc. Class A Common Stock New",54562382319,$388.72,$8.18,-2.06%,down
-NXPI,,NXP Semiconductors N.V. Common Stock,53279392408,$210.90,$6.50,-2.99%,down
-TEAM,,Atlassian Corporation Class A Common Stock,51666398838,$196.82,$2.50,-1.25%,down
-FAST,,Fastenal Company Common Stock,48379164609,$42.17,$0.69,-1.61%,down
-PCAR,,PACCAR Inc. Common Stock,48233271969,$91.88,$1.76,-1.88%,down
-ZS,,"Zscaler, Inc. Common Stock",47012308160,$301.95,$0.52,+0.17%,up
-CPRT,,"Copart, Inc. (DE) Common Stock",46983430638,$48.59,$1.40,-2.80%,down
-FANG,,"Diamondback Energy, Inc. Common Stock",45259738684,$154.91,$5.58,+3.74%,up
-KDP,,Keurig Dr Pepper Inc. Common Stock,44847039838,$33.02,$0.12,-0.36%,down
-EXC,,Exelon Corporation Common Stock,43662417468,$43.25,$0.39,-0.89%,down
-VRSK,,"Verisk Analytics, Inc. Common Stock",43421416342,$310.41,$3.05,-0.97%,down
-ROST,,"Ross Stores, Inc. Common Stock",43122612841,$131.845,$1.625,-1.22%,down
-CCEP,,Coca-Cola Europacific Partners plc Ordinary Shares,42641272807,$92.85,$0.68,-0.73%,down
-IDXX,,"IDEXX Laboratories, Inc. Common Stock",42036536016,$522.70,$4.22,-0.80%,down
-DDOG,,"Datadog, Inc. Class A Common Stock",41597796674,$120.45,$2.23,-1.82%,down
-TTWO,,"Take-Two Interactive Software, Inc. Common Stock",40848536569,$230.23,$4.23,-1.80%,down
-XEL,,Xcel Energy Inc. Common Stock,39000552651,$67.62,$0.88,-1.28%,down
-CTSH,,Cognizant Technology Solutions Corporation Class A Common Stock,38917767979,$78.95,$1.51,-1.88%,down
-BKR,,Baker Hughes Company Class A Common Stock,38678879024,$39.04,$0.41,+1.06%,up
-EA,,Electronic Arts Inc. Common Stock,37233731523,$148.48,$1.57,-1.05%,down
-MCHP,,Microchip Technology Incorporated Common Stock,35454725586,$65.73,$2.20,-3.24%,down
-CSGP,,"CoStar Group, Inc. Common Stock",34240320757,$81.16,$1.21,-1.47%,down
-ODFL,,"Old Dominion Freight Line, Inc. Common Stock",33850101611,$160.18,$2.23,-1.37%,down
-TTD,,"The Trade Desk, Inc. Class A Common Stock",33398171945,$67.96,$2.61,-3.70%,down
-GEHC,,GE HealthCare Technologies Inc. Common Stock ,33082191106,$72.25,$0.86,-1.18%,down
-DXCM,,"DexCom, Inc. Common Stock",32148894007,$81.99,$0.86,-1.04%,down
-KHC,,The Kraft Heinz Company Common Stock,30866777994,$26.08,$0.38,-1.44%,down
-ANSS,,"ANSYS, Inc. Common Stock",29716535495,$338.01,$5.49,-1.60%,down
-LULU,,lululemon athletica inc. Common Stock,27432954007,$239.11,$7.92,-3.21%,down
-WBD,,"Warner Bros. Discovery, Inc. Series A Common Stock ",24814972280,$10.03,$0.13,-1.28%,down
-CDW,,CDW Corporation Common Stock,22441783263,$170.42,$4.33,-2.48%,down
-ON,,ON Semiconductor Corporation Common Stock,21320510353,$51.02,$1.96,-3.70%,down
-GFS,,GlobalFoundries Inc. Ordinary Shares,20302958861,$36.72,$1.18,-3.11%,down
-BIIB,,Biogen Inc. Common Stock,19143861251,$130.65,$1.66,-1.25%,down
+MSFT,,Microsoft Corporation Common Stock,3561229067476,$475.005,$0.045,+0.01%,up
+NVDA,,NVIDIA Corporation Common Stock,3530436000000,$143.66,$1.69,+1.19%,up
+AAPL,,Apple Inc. Common Stock,2963566594920,$197.20,$0.75,+0.38%,up
+AMZN,,"Amazon.com, Inc. Common Stock",2294193755153,$213.64,$1.54,+0.73%,up
+GOOG,,Alphabet Inc. Class C Capital Stock,2159301900000,$176.79,$0.91,+0.52%,up
+GOOGL,,Alphabet Inc. Class A Common Stock,2145103950000,$175.42,$0.75,+0.43%,up
+META,,"Meta Platforms, Inc. Class A Common Stock",1765359448068,$696.3162,$13.9712,+2.05%,up
+AVGO,,Broadcom Inc. Common Stock,1185745033806,$250.00,$1.30,+0.52%,up
+TSLA,,"Tesla, Inc. Common Stock",1060113317726,$325.0198,$0.2902,-0.09%,down
+NFLX,,"Netflix, Inc. Common Stock",521610921374,"$1,220.00",$7.85,+0.65%,up
+COST,,Costco Wholesale Corporation Common Stock,436541104375,$983.00,$7.21,-0.73%,down
+PLTR,,Palantir Technologies Inc. Class A Common Stock,333715212060,$141.21,$3.81,+2.77%,up
+ASML,,ASML Holding N.V. New York Registry Shares,304885338256,$762.00,$1.00,+0.13%,up
+TMUS,,"T-Mobile US, Inc. Common Stock",262276465497,$222.00,$6.00,-2.63%,down
+CSCO,,"Cisco Systems, Inc. Common Stock (DE)",259419480772,$64.90,$0.81,+1.26%,up
+AZN,,AstraZeneca PLC American Depositary Shares,228101786210,$73.39,$1.03,-1.38%,down
+LIN,,Linde plc Ordinary Shares,219905876053,$466.95,$0.97,+0.21%,up
+INTU,,Intuit Inc. Common Stock,214253611760,$762.13,$8.15,+1.08%,up
+AMD,,"Advanced Micro Devices, Inc. Common Stock",204929276206,$125.06,$8.90,+7.66%,up
+ISRG,,"Intuitive Surgical, Inc. Common Stock",186033411075,$516.45,$4.27,+0.83%,up
+TXN,,Texas Instruments Incorporated Common Stock,180985807578,$197.50,$2.50,+1.28%,up
+PEP,,"PepsiCo, Inc. Common Stock",180173562351,$131.12,$0.27,+0.21%,up
+BKNG,,Booking Holdings Inc. Common Stock,174710376336,"$5,331.39",$33.01,+0.62%,up
+QCOM,,QUALCOMM Incorporated Common Stock,172243260000,$155.64,$0.92,+0.59%,up
+ADBE,,Adobe Inc. Common Stock,171378018000,$397.50,$5.82,+1.49%,up
+AMGN,,Amgen Inc. Common Stock,158924420236,$296.12,$0.90,+0.30%,up
+ARM,,Arm Holdings plc American Depositary Shares,150457858418,$140.55,$5.00,+3.69%,up
+PDD,,PDD Holdings Inc. American Depositary Shares,145925459829,$102.20,$1.62,+1.61%,up
+HON,,Honeywell International Inc. Common Stock,144018813078,$224.00,$0.29,-0.13%,down
+AMAT,,"Applied Materials, Inc. Common Stock",141681060211,$175.48,$4.89,+2.87%,up
+SHOP,,Shopify Inc. Class A Subordinate Voting Shares,140597164990,$107.23,$1.89,+1.79%,up
+GILD,,"Gilead Sciences, Inc. Common Stock",137864664480,$110.20,$0.22,+0.20%,up
+MU,,"Micron Technology, Inc. Common Stock",133929771556,$118.83,$3.23,+2.79%,up
+PANW,,"Palo Alto Networks, Inc. Common Stock",132099748000,$197.08,$0.81,+0.41%,up
+CMCSA,,Comcast Corporation Class A Common Stock,131090344877,$34.83,$0.18,-0.51%,down
+APP,,Applovin Corporation Class A Common Stock,125433241265,$368.89,$4.40,+1.21%,up
+ADP,,"Automatic Data Processing, Inc. Common Stock",124987673645,$304.93,$1.89,-0.62%,down
+MELI,,"MercadoLibre, Inc. Common Stock",124449888255,"$2,452.78",$80.80,+3.41%,up
+CRWD,,"CrowdStrike Holdings, Inc. Class A Common Stock",119487082134,$477.31,$3.31,-0.69%,down
+LRCX,,Lam Research Corporation Common Stock,119482412380,$92.40,$2.88,+3.22%,up
+KLAC,,KLA Corporation Common Stock,118009607303,$890.99,$23.32,+2.69%,up
+VRTX,,Vertex Pharmaceuticals Incorporated Common Stock,115792419590,$450.00,$5.45,-1.20%,down
+ADI,,"Analog Devices, Inc. Common Stock",115030331833,$231.045,$6.015,+2.67%,up
+MSTR,,MicroStrategy Incorporated Common Stock Class A,106778514285,$374.83,$8.04,-2.10%,down
+SBUX,,Starbucks Corporation Common Stock,106230672000,$93.02,$0.24,-0.26%,down
+CEG,,Constellation Energy Corporation Common Stock ,96535684134,$307.79,$10.90,+3.67%,up
+DASH,,"DoorDash, Inc. Class A Common Stock",93956784836,$220.50,$1.54,+0.70%,up
+INTC,,Intel Corporation Common Stock,90467880000,$20.5101,$0.3701,+1.84%,up
+CTAS,,Cintas Corporation Common Stock,89830485659,$221.00,$0.98,-0.44%,down
+MDLZ,,"Mondelez International, Inc. Class A Common Stock",87024541219,$67.02,$0.09,+0.13%,up
+ABNB,,"Airbnb, Inc. Class A Common Stock",85950094114,$136.19,$0.65,+0.48%,up
+CDNS,,"Cadence Design Systems, Inc. Common Stock",82133764020,$298.71,$1.29,-0.43%,down
+FTNT,,"Fortinet, Inc. Common Stock",78034207689,$101.95,$1.12,+1.11%,up
+ORLY,,"O'Reilly Automotive, Inc. Common Stock",75328284994,$87.91,$2.00,-2.22%,down
+SNPS,,"Synopsys, Inc. Common Stock",74385705287,$474.00,$4.86,-1.01%,down
+MAR,,Marriott International Class A Common Stock,70640548051,$256.27,$1.28,+0.50%,up
+PYPL,,"PayPal Holdings, Inc. Common Stock",70275222224,$71.50,$0.67,+0.95%,up
+WDAY,,"Workday, Inc. Class A Common Stock",65588550000,$248.00,$3.46,+1.41%,up
+ADSK,,"Autodesk, Inc. Common Stock",64050200000,$295.61,$3.45,+1.18%,up
+MNST,,Monster Beverage Corporation,62298724637,$63.60,$0.54,+0.86%,up
+CSX,,CSX Corporation Common Stock,61165453560,$32.46,$0.34,+1.06%,up
+ROP,,"Roper Technologies, Inc. Common Stock",60817159467,$564.69,$3.94,+0.70%,up
+AXON,,"Axon Enterprise, Inc. Common Stock",60771122355,$774.00,$6.63,-0.85%,down
+MRVL,,"Marvell Technology, Inc. Common Stock",60716124000,$69.7001,$2.5101,+3.74%,up
+REGN,,"Regeneron Pharmaceuticals, Inc. Common Stock",56431405972,$522.68,$6.56,-1.24%,down
+PAYX,,"Paychex, Inc. Common Stock",55354101858,$153.35,$0.13,+0.08%,up
+NXPI,,NXP Semiconductors N.V. Common Stock,54954320676,$215.28,$4.38,+2.08%,up
+AEP,,"American Electric Power Company, Inc. Common Stock",54439815100,$102.10,$0.80,-0.78%,down
+CHTR,,"Charter Communications, Inc. Class A Common Stock New",52668868897,$375.50,$13.22,-3.40%,down
+TEAM,,Atlassian Corporation Class A Common Stock,52585169268,$200.30,$3.48,+1.77%,up
+PCAR,,PACCAR Inc. Common Stock,48663738698,$91.7236,$0.1564,-0.17%,down
+FAST,,Fastenal Company Common Stock,48459471498,$42.51,$0.34,+0.81%,up
+ZS,,"Zscaler, Inc. Common Stock",47490293873,$304.00,$2.05,+0.68%,up
+CPRT,,"Copart, Inc. (DE) Common Stock",46790043395,$48.56,$0.03,-0.06%,down
+KDP,,Keurig Dr Pepper Inc. Common Stock,44955694084,$33.38,$0.36,+1.09%,up
+FANG,,"Diamondback Energy, Inc. Common Stock",44126126999,$152.50,$2.41,-1.56%,down
+VRSK,,"Verisk Analytics, Inc. Common Stock",43289925309,$308.57,$1.84,-0.59%,down
+EXC,,Exelon Corporation Common Stock,43086982140,$42.87,$0.38,-0.88%,down
+ROST,,"Ross Stores, Inc. Common Stock",42895298829,$132.30,$0.455,+0.35%,up
+IDXX,,"IDEXX Laboratories, Inc. Common Stock",42524697052,$550.00,$27.30,+5.22%,up
+CCEP,,Coca-Cola Europacific Partners plc Ordinary Shares,42516350441,$94.63,$1.78,+1.92%,up
+TTWO,,"Take-Two Interactive Software, Inc. Common Stock",42333583049,$235.90,$5.67,+2.46%,up
+DDOG,,"Datadog, Inc. Class A Common Stock",42108919456,$121.002,$0.552,+0.46%,up
+CTSH,,Cognizant Technology Solutions Corporation Class A Common Stock,39509298334,$79.39,$0.44,+0.56%,up
+BKR,,Baker Hughes Company Class A Common Stock,38629341525,$39.25,$0.21,+0.54%,up
+XEL,,Xcel Energy Inc. Common Stock,38521841342,$66.66,$0.96,-1.42%,down
+EA,,Electronic Arts Inc. Common Stock,37890738369,$148.50,$0.02,+0.01%,up
+MCHP,,Microchip Technology Incorporated Common Stock,36781648223,$67.50,$1.77,+2.69%,up
+CSGP,,"CoStar Group, Inc. Common Stock",34569392347,$81.50,$0.34,+0.42%,up
+TTD,,"The Trade Desk, Inc. Class A Common Stock",34523566497,$69.76,$1.80,+2.65%,up
+ODFL,,"Old Dominion Freight Line, Inc. Common Stock",33695834073,$158.40,$1.78,-1.11%,down
+GEHC,,GE HealthCare Technologies Inc. Common Stock ,33361500954,$73.90,$1.65,+2.28%,up
+DXCM,,"DexCom, Inc. Common Stock",32544922583,$83.01,$1.02,+1.24%,up
+KHC,,The Kraft Heinz Company Common Stock,30523550785,$25.7701,$0.3099,-1.19%,down
+ANSS,,"ANSYS, Inc. Common Stock",29800934993,$338.97,$0.96,+0.28%,up
+LULU,,lululemon athletica inc. Common Stock,27682490518,$240.10,$0.99,+0.41%,up
+WBD,,"Warner Bros. Discovery, Inc. Series A Common Stock ",26621047032,$10.75,$0.72,+7.18%,up
+CDW,,CDW Corporation Common Stock,22695935603,$174.07,$3.65,+2.14%,up
+ON,,ON Semiconductor Corporation Common Stock,22515662442,$53.49,$2.47,+4.84%,up
+GFS,,GlobalFoundries Inc. Ordinary Shares,20789522145,$37.3662,$0.6462,+1.76%,up
+BIIB,,Biogen Inc. Common Stock,19201007105,$130.00,$0.65,-0.50%,down
