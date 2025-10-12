@@ -79,10 +79,12 @@ def calculate_returns(
                 "Volume": val["summaryDetail"]["volume"]["raw"],
                 "V/C ‱": round(
                     val["summaryDetail"]["volume"]["raw"]
-                    / val["price"]["marketCap"]["raw"]
+                    / marketcap
                     * 10_000,
                     2,
-                ),
+                )
+                if (marketcap :=val["price"]["marketCap"]["raw"]) != 0
+                else None,
             }
             for symbol in symbols
             if (val := data.get(symbol))
