@@ -1,8 +1,5 @@
-import datetime as dt
-import gzip
 from pathlib import Path
 
-import orjson
 import pandas as pd
 import yfinance as yf
 
@@ -21,19 +18,6 @@ def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
         rank = constituents.index.map(lambda n: n + 1)
     constituents.insert(0, "Rank", rank)
     return constituents
-
-
-def get_tickers_info() -> dict:
-    file_path = DATA_DIR / "info.json.gz"
-
-    try:
-        with open(f"{file_path}.timestamp", "r") as f:
-            creation_time = dt.datetime.fromisoformat(f.read())
-    except Exception:
-        creation_time = None
-    with open(file_path, "rb") as f:
-        data = orjson.loads(gzip.decompress(f.read()))
-    return {"data": data, "creation_time": creation_time}
 
 
 def get_tickers_hists(tickers: list[str]) -> pd.DataFrame:

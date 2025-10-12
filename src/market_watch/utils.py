@@ -14,7 +14,7 @@ import streamlit.components.v1 as components
 import yfinance as yf
 from pypfopt import EfficientFrontier, expected_returns
 
-from market_watch import ticker_data, yahoo_finance
+from market_watch import yahoo_finance
 
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent.parent / "data"
@@ -131,11 +131,6 @@ def trading_view(
 
 
 @st.cache_data(ttl="1h")
-def get_tickers_info() -> dict:
-    return ticker_data.get_tickers_info()
-
-
-@st.cache_data(ttl="1h")
 def get_data(symbol: str) -> dict:
     try:
         data = yahoo_finance.get_info(
@@ -158,20 +153,11 @@ def get_data(symbol: str) -> dict:
 @st.cache_data(ttl="1h")
 def get_hist(ticker: str) -> pd.DataFrame:
     try:
-        df = get_tickers_hist()
-        hist = pd.DataFrame({col: df[col][ticker] for col in ["Close", "Volume"]})
-    except KeyError:
-        try:
-            hist = yf.Ticker(ticker).history(period="10y", raise_errors=True)
-        except yf.exceptions.YFInvalidPeriodError:  # type: ignore
-            hist = yf.Ticker(ticker).history(period="max")
+        hist = yf.Ticker(ticker).history(period="10y", raise_errors=True)
+    except yf.exceptions.YFInvalidPeriodError:  # type: ignore
+        hist = yf.Ticker(ticker).history(period="max")
     hist["LocalDate"] = hist.index.date
     return hist.set_index(["LocalDate"])
-
-
-@st.cache_data(ttl="1h")
-def get_tickers_hist() -> pd.DataFrame:
-    return pd.read_parquet(DATA_DIR / "hist.parquet")
 
 
 def display_tickers(names: list[str], show_details: bool = True, optimize: bool = True):

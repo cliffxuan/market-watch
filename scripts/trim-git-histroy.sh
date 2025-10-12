@@ -30,7 +30,7 @@ remove() {
 
 fetch() {
   ./.venv/bin/python scripts/scrape_lists.py
-  ./.venv/bin/python etl/__main__.py --all
+  ./.venv/bin/python etl/__main__.py
 }
 
 commit() {

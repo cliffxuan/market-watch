@@ -1,6 +1,7 @@
-!data/info.json.gz
 data/info.json
 data/*.sqlite3
+data/*.parquet
+data/*.gz
 etl/prefect-server/data/
 .store/
 .streamlit/

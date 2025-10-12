@@ -1,17 +1,14 @@
 import datetime as dt
 import os
+from typing import FrozenSet
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-from market_watch.ticker_data import calculate_returns
-from market_watch.utils import (
-    DATA_DIR,
-    display_tickers,
-    get_tickers_hist,
-    get_tickers_info,
-)
+from market_watch import yahoo_finance as yf2
+from market_watch.ticker_data import calculate_returns, get_tickers_hists
+from market_watch.utils import DATA_DIR, display_tickers
 
 
 def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
@@ -25,15 +22,22 @@ def search(df: pd.DataFrame, regex: str, case: bool = False) -> pd.DataFrame:
     return df.loc[mask.any(axis=1)]
 
 
-def get_info(
-    symbols: list[str],
-    tickers_info: dict | None = None,
-    close_prices: pd.DataFrame | None = None,
-) -> tuple[pd.DataFrame, dt.datetime]:
-    tickers_info = tickers_info if tickers_info is not None else get_tickers_info()
-    close_prices = (
-        close_prices if close_prices is not None else get_tickers_hist()["Close"]
-    )
+@st.cache_data(ttl="1h")
+def get_tickers_info(symbols: FrozenSet[str]) -> dict:
+    return {
+        "data": {symbol: yf2.get_info(symbol) for symbol in symbols},
+        "creation_time": dt.datetime.now(tz=dt.timezone.utc),
+    }
+
+
+@st.cache_data(ttl="1h")
+def get_close_prices(symbols: FrozenSet[str]) -> pd.DataFrame:
+    return get_tickers_hists(list(symbols))["Close"]
+
+
+def get_info(symbols: list[str]) -> tuple[pd.DataFrame, dt.datetime]:
+    tickers_info = get_tickers_info(frozenset(symbols))
+    close_prices = get_close_prices(frozenset(symbols))
     return (
         calculate_returns(
             data=tickers_info["data"],
@@ -44,13 +48,8 @@ def get_info(
     )
 
 
-def tickers_table(
-    name: str,
-    symbols: list[str],
-    tickers_info: dict | None = None,
-    close_prices: pd.DataFrame | None = None,
-) -> None:
-    constituents, creation_time = get_info(symbols, tickers_info, close_prices)
+def tickers_table(name: str, symbols: list[str]) -> None:
+    constituents, creation_time = get_info(symbols)
     st.markdown(f"# {name}")
     st.markdown(f"Select {name} constituents to build a portfolio")
     query = st.columns(2)[0].text_input(

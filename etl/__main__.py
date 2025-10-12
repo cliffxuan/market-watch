@@ -1,5 +1,4 @@
 # pipedream add-package pyarrow
-import argparse
 import datetime as dt
 import gzip
 import os
@@ -12,11 +11,7 @@ import yfinance as yf
 from github import Auth, Github
 
 from market_watch import yahoo_finance as yf2
-from market_watch.ticker_data import (
-    calculate_returns,
-    get_tickers_hists,
-    get_tickers_info,
-)
+from market_watch.ticker_data import calculate_returns, get_tickers_hists
 
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent / "data"
@@ -126,61 +121,36 @@ def handler(pd: "pipedream"):  # type: ignore  # noqa
     return {"succeed": True, "message": message}
 
 
-def argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="etl")
-    parser.add_argument("--commit", "-c", action="store_true", help="commit to github")
-    parser.add_argument("--all", "-a", action="store_true", help="get all")
-    parser.add_argument("--price", "-p", action="store_true", help="get price")
-    parser.add_argument("--info", "-i", action="store_true", help="get info")
-    parser.add_argument(
-        "--returns", "-r", action="store_true", help="calculate returns"
-    )
-    return parser
-
-
-def main(argv: list[str] | None = None) -> None:
-    args = argument_parser().parse_args(argv)
-    timestamp = dt.datetime.now().isoformat()
+def main() -> None:
     hist_file_path = DATA_DIR / HIST_PARQUET
     info_file_path = DATA_DIR / INFO_JSON_GZ
-    if args.all or args.price:
-        print(f"get hist data and write to {hist_file_path}")
-        hists = get_hists()
-        hists.to_parquet(hist_file_path, compression="gzip")
-        with open(f"{hist_file_path}.timestamp", "w") as f:
-            f.write(timestamp)
-        if args.commit:
-            commit(hist_file_path)
 
-    if args.all or args.info:
-        print(f"get info data and write to {info_file_path}")
-        info = get_info_json()
-        with open(info_file_path, "wb") as f:
-            f.write(gzip.compress(orjson.dumps(info, option=orjson.OPT_INDENT_2)))
-        with open(f"{info_file_path}.timestamp", "w") as f:
-            f.write(timestamp)
-        if args.commit:
-            commit(info_file_path)
+    print(f"get hist data and write to {hist_file_path}")
+    hists = get_hists()
+    hists.to_parquet(hist_file_path, compression="gzip")
 
-    if args.all or args.returns:
-        info = get_tickers_info()
-        for collection in COLLECTIONS:
-            df = calculate_returns(
-                data=info["data"],
-                close_prices=pd.read_parquet(hist_file_path)["Close"],
-                symbols=pd.read_csv(DATA_DIR / "raw" / f"{collection}.csv")[
-                    "Symbol"
-                ].tolist(),
-            )
-            for file in (
-                "latest.csv",
-                f'{info["creation_time"].strftime("%Y-%m-%d")}.csv',
-            ):
-                directory = DATA_DIR / collection
-                directory.mkdir(exist_ok=True)
-                path = directory / file
-                print(f"write to {path}")
-                df.to_csv(path, index=False)
+    print(f"get info data and write to {info_file_path}")
+    info = get_info_json()
+    with open(info_file_path, "wb") as f:
+        f.write(gzip.compress(orjson.dumps(info, option=orjson.OPT_INDENT_2)))
+
+    for collection in COLLECTIONS:
+        df = calculate_returns(
+            data=info,
+            close_prices=pd.read_parquet(hist_file_path)["Close"],
+            symbols=pd.read_csv(DATA_DIR / "raw" / f"{collection}.csv")[
+                "Symbol"
+            ].tolist(),
+        )
+        for file in (
+            "latest.csv",
+            f"{dt.datetime.now().strftime('%Y-%m-%d')}.csv",
+        ):
+            directory = DATA_DIR / collection
+            directory.mkdir(exist_ok=True)
+            path = directory / file
+            print(f"write to {path}")
+            df.to_csv(path, index=False)
 
 
 if __name__ == "__main__":
