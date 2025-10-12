@@ -6,7 +6,7 @@ from prefect import flow
 
 PWD = Path(__file__).absolute().parent
 PROJECT_DIR = PWD.parent.parent
-script = PROJECT_DIR / "scripts" / "trim-git-histroy.sh"
+script = PROJECT_DIR / "scripts" / "update-tickers.sh"
 assert script.exists()
 
 

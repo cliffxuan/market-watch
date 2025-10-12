@@ -28,20 +28,6 @@ remove() {
   git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
 }
 
-fetch() {
-  ./.venv/bin/python scripts/scrape_lists.py
-  ./.venv/bin/python etl/__main__.py
-}
-
-commit() {
-  git add data/
-  git commit -m 'trimmed data and refetched'
-}
-
-push() {
-  git push origin main -f
-}
-
 clean() {
   echo clean
   git reflog expire --expire=now --all
@@ -49,21 +35,13 @@ clean() {
 }
 
 all() {
-  precheck && remove && fetch && commit && push && clean
+  precheck && remove && clean
 }
 
-while getopts ":cfhpr" opt; do
+while getopts ":chr" opt; do
   case "$opt" in
   c)
     clean
-    exit 0
-    ;;
-  f)
-    fetch
-    exit 0
-    ;;
-  p)
-    precheck
     exit 0
     ;;
   r)
