@@ -21,9 +21,13 @@ TYPES = ["spx-500", "nasdaq-100"]
 
 
 def get_spx_500() -> pd.DataFrame:
-    return pd.read_csv(
-        "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
-    )
+    print("Fetching SPX-500 constituents...")
+    url = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+    constituents = pd.read_csv(url)
+    print(f"Retrieved {len(constituents)} constituents from {url}")
+    print("\nTop 5 constituents:")
+    print(constituents.head())
+    return constituents
 
 
 def get_nasdaq_100() -> pd.DataFrame:
@@ -39,7 +43,7 @@ def get_nasdaq_100() -> pd.DataFrame:
     )
     # Sort by marketCap in descending order
     constituents = constituents.sort_values(by="marketCap", ascending=False)
-    print(f"Retrieved {len(constituents)} constituents from alternative source")
+    print(f"Retrieved {len(constituents)} constituents from {api_url}")
     print("\nTop 5 constituents:")
     print(constituents.head())
     return constituents
