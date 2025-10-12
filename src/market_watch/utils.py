@@ -199,7 +199,7 @@ def display_tickers(names: list[str], show_details: bool = True, optimize: bool 
                     ).to_html(escape=False, header=False),
                     unsafe_allow_html=True,
                 )
-                info_tabs = st.tabs(["TradingView", "Closing Price", "Volume"])
+                info_tabs = st.tabs(["TradingView", "Volume", "Closing Price"])
                 with info_tabs[0]:
                     trading_view(name, info["exchange"])
                 with info_tabs[1]:
