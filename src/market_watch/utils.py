@@ -138,14 +138,11 @@ def get_tickers_info() -> dict:
 @st.cache_data(ttl="1h")
 def get_data(symbol: str) -> dict:
     try:
-        data = get_tickers_info()["data"][symbol.upper()]
-    except KeyError:
-        try:
-            data = yahoo_finance.get_info(
-                symbol, modules=("quoteType", "assetProfile", "price")
-            )
-        except Exception:
-            data = {}
+        data = yahoo_finance.get_info(
+            symbol, modules=("quoteType", "assetProfile", "price")
+        )
+    except Exception:
+        data = {}
     return {
         label: val
         for label, col in {
