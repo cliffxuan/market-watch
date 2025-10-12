@@ -29,7 +29,7 @@ remove() {
 }
 
 fetch() {
-  ./.venv/bin/python scripts/process_companies_csv.py
+  ./.venv/bin/python scripts/scrape_lists.py
   ./.venv/bin/python etl/__main__.py --all
 }
 
