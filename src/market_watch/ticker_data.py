@@ -15,7 +15,10 @@ def rank_by_market_cap(constituents: pd.DataFrame) -> pd.DataFrame:
         by=["Market Cap"], ascending=False
     ).reset_index(drop=True)
     goog = constituents.Symbol.loc[lambda x: x.isin(["GOOGL", "GOOG"])]
-    rank = constituents.index.map(lambda n: n + 1 if n <= goog.index.min() else n)
+    if len(goog) > 0:
+        rank = constituents.index.map(lambda n: n + 1 if n <= goog.index.min() else n)
+    else:
+        rank = constituents.index.map(lambda n: n + 1)
     constituents.insert(0, "Rank", rank)
     return constituents
 
@@ -77,14 +80,14 @@ def calculate_returns(
                 "Name": val["price"]["shortName"],
                 "Market Cap": val["price"]["marketCap"]["raw"],
                 "Volume": val["summaryDetail"]["volume"]["raw"],
-                "V/C ‱": round(
-                    val["summaryDetail"]["volume"]["raw"]
-                    / marketcap
-                    * 10_000,
-                    2,
-                )
-                if (marketcap :=val["price"]["marketCap"]["raw"]) != 0
-                else None,
+                "V/C ‱": (
+                    round(
+                        val["summaryDetail"]["volume"]["raw"] / marketcap * 10_000,
+                        2,
+                    )
+                    if (marketcap := val["price"]["marketCap"]["raw"]) != 0
+                    else None
+                ),
             }
             for symbol in symbols
             if (val := data.get(symbol))

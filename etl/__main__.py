@@ -26,8 +26,8 @@ INFO_JSON_GZ = "info.json.gz"
 
 COLLECTIONS = [
     "spx-500",
-    # csv file is from https://www.nasdaq.com/market-activity/quotes/nasdaq-ndx-index
     "nasdaq-100",
+    "ark-innovation",
 ]
 
 
@@ -44,7 +44,7 @@ def get_tickers(local: bool = True) -> list[str]:
             )["Symbol"]
             for collection in COLLECTIONS
         ]
-    symbols = pd.concat(dfs).drop_duplicates()
+    symbols = pd.concat(dfs).drop_duplicates().dropna()
     return symbols.apply(lambda x: x.replace(".", "-")).sort_values().to_list()
 
 
@@ -176,7 +176,9 @@ def main(argv: list[str] | None = None) -> None:
                 "latest.csv",
                 f'{info["creation_time"].strftime("%Y-%m-%d")}.csv',
             ):
-                path = DATA_DIR / collection / file
+                directory = DATA_DIR / collection
+                directory.mkdir(exist_ok=True)
+                path = directory / file
                 print(f"write to {path}")
                 df.to_csv(path, index=False)
 

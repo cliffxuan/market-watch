@@ -9,7 +9,6 @@ LISTS = {
     "nasdaq-100": "nasdaq100",
     "ark-innovation": "etf/ark-invest/ARKK",
 }
-
 PWD = Path(__file__).parent.absolute()
 DATA_DIR = PWD.parent / "data"
 
