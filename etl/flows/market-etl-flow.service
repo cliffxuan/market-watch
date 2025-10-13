@@ -1,0 +1,16 @@
+# /etc/systemd/system
+[Unit]
+Description=Market Watch ETL Flow
+Wants=network-online.target
+After=network-online.target
+[Service]
+User=cliff
+Group=cliff
+Type=simple
+Restart=always
+RestartSec=5
+WorkingDirectory=/home/cliff/dev/market-watch
+ExecStart=/home/cliff/dev/market-watch/.venv/bin/python etl/flows/update_tickers.py
+[Install]
+WantedBy=multi-user.target
+
