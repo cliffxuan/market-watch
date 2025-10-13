@@ -10,6 +10,7 @@ Type=simple
 Restart=always
 RestartSec=5
 WorkingDirectory=/home/cliff/dev/market-watch
+Environment=PREFECT_API_URL=http://127.0.0.1:4200/api
 ExecStart=/home/cliff/dev/market-watch/.venv/bin/python etl/flows/update_tickers.py
 [Install]
 WantedBy=multi-user.target
