@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 RUN apt update -y
-RUN apt install -y gcc cmake libopenblas-dev
+RUN apt install -y gcc g++ cmake libopenblas-dev git
 COPY ./ /app
 WORKDIR /app
 RUN pip install uv
