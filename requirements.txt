@@ -5,48 +5,50 @@ altair==5.5.0
     # via streamlit
 annotated-types==0.7.0
     # via pydantic
-anyio==4.9.0
+anyio==4.11.0
     # via
     #   httpx
     #   openai
-attrs==25.3.0
+attrs==25.4.0
     # via
     #   jsonschema
     #   referencing
-beautifulsoup4==4.13.4
+beautifulsoup4==4.14.2
     # via yfinance
 blinker==1.9.0
     # via streamlit
-cachetools==5.5.2
+cachetools==6.2.1
     # via
     #   google-auth
     #   streamlit
-certifi==2025.4.26
+certifi==2025.10.5
     # via
     #   curl-cffi
     #   httpcore
     #   httpx
     #   requests
-cffi==1.17.1
-    # via curl-cffi
-charset-normalizer==3.4.2
+cffi==2.0.0
+    # via
+    #   clarabel
+    #   curl-cffi
+charset-normalizer==3.4.4
     # via requests
-clarabel==0.10.0
+clarabel==0.11.1
     # via cvxpy
-click==8.1.8
+click==8.3.0
     # via streamlit
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   click
     #   loguru
     #   tqdm
-contourpy==1.3.2
+contourpy==1.3.3
     # via matplotlib
-curl-cffi==0.10.0
+curl-cffi==0.13.0
     # via
     #   market-watch
     #   yfinance
-cvxpy==1.6.5
+cvxpy==1.7.3
     # via pyportfolioopt
 cycler==0.12.1
     # via matplotlib
@@ -54,34 +56,36 @@ defusedxml==0.7.1
     # via youtube-transcript-api
 distro==1.9.0
     # via openai
-fonttools==4.58.0
+ecos==2.0.14
+    # via pyportfolioopt
+fonttools==4.60.1
     # via matplotlib
 frozendict==2.4.6
     # via yfinance
 gitdb==4.0.12
     # via gitpython
-gitpython==3.1.44
+gitpython==3.1.45
     # via streamlit
-google-api-core==2.24.2
+google-api-core==2.28.1
     # via google-api-python-client
-google-api-python-client==2.169.0
+google-api-python-client==2.187.0
     # via market-watch
-google-auth==2.40.1
+google-auth==2.43.0
     # via
     #   google-api-core
     #   google-api-python-client
     #   google-auth-httplib2
-google-auth-httplib2==0.2.0
+google-auth-httplib2==0.2.1
     # via google-api-python-client
-googleapis-common-protos==1.70.0
+googleapis-common-protos==1.72.0
     # via google-api-core
-greenlet==3.2.2 ; (python_full_version < '3.14' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'WIN32') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'ppc64le') or (python_full_version < '3.14' and platform_machine == 'win32') or (python_full_version < '3.14' and platform_machine == 'x86_64')
+greenlet==3.2.4 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'
     # via sqlalchemy
 h11==0.16.0
     # via httpcore
 httpcore==1.0.9
     # via httpx
-httplib2==0.22.0
+httplib2==0.31.0
     # via
     #   google-api-python-client
     #   google-auth-httplib2
@@ -89,7 +93,7 @@ httpx==0.28.1
     # via
     #   openai
     #   python-telegram-bot
-idna==3.10
+idna==3.11
     # via
     #   anyio
     #   httpx
@@ -99,33 +103,32 @@ jinja2==3.1.6
     #   altair
     #   osqp
     #   pydeck
-jiter==0.9.0
+jiter==0.12.0
     # via openai
-joblib==1.5.0
+joblib==1.5.2
     # via osqp
-jsonschema==4.23.0
+jsonschema==4.25.1
     # via altair
-jsonschema-specifications==2025.4.1
+jsonschema-specifications==2025.9.1
     # via jsonschema
-kiwisolver==1.4.8
+kiwisolver==1.4.9
     # via matplotlib
 loguru==0.7.3
     # via market-watch
-markupsafe==3.0.2
+markupsafe==3.0.3
     # via jinja2
-matplotlib==3.10.3
+matplotlib==3.10.7
     # via market-watch
-multitasking==0.0.11
+multitasking==0.0.12
     # via yfinance
-narwhals==1.38.2
-    # via
-    #   altair
-    #   plotly
-numpy==1.26.4
+narwhals==2.10.2
+    # via altair
+numpy==2.3.4
     # via
     #   clarabel
     #   contourpy
     #   cvxpy
+    #   ecos
     #   matplotlib
     #   osqp
     #   pandas
@@ -137,20 +140,20 @@ numpy==1.26.4
     #   statsmodels
     #   streamlit
     #   yfinance
-openai==1.78.0
+openai==2.7.1
     # via market-watch
-orjson==3.10.18
+orjson==3.11.4
     # via market-watch
-osqp==1.0.4
+osqp==1.0.5
     # via cvxpy
-packaging==24.2
+packaging==25.0
     # via
     #   altair
     #   matplotlib
     #   plotly
     #   statsmodels
     #   streamlit
-pandas==2.2.3
+pandas==2.3.3
     # via
     #   market-watch
     #   pyportfolioopt
@@ -158,28 +161,30 @@ pandas==2.2.3
     #   streamlit
     #   streamlit-aggrid
     #   yfinance
-patsy==1.0.1
+patsy==1.0.2
     # via statsmodels
-peewee==3.18.1
+peewee==3.18.3
     # via yfinance
-pillow==11.2.1
+pillow==12.0.0
     # via
     #   matplotlib
     #   streamlit
-platformdirs==4.3.8
+platformdirs==4.5.0
     # via yfinance
-plotly==6.0.1
-    # via market-watch
+plotly==5.24.1
+    # via
+    #   market-watch
+    #   pyportfolioopt
 proto-plus==1.26.1
     # via google-api-core
-protobuf==5.29.4
+protobuf==6.33.0
     # via
     #   google-api-core
     #   googleapis-common-protos
     #   proto-plus
     #   streamlit
     #   yfinance
-pyarrow==18.1.0
+pyarrow==21.0.0
     # via streamlit
 pyasn1==0.6.1
     # via
@@ -187,22 +192,22 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.2
     # via google-auth
-pycparser==2.22
+pycparser==2.23 ; implementation_name != 'PyPy'
     # via cffi
-pydantic==2.11.4
+pydantic==2.12.4
     # via
     #   market-watch
     #   openai
     #   sqlmodel
-pydantic-core==2.33.2
+pydantic-core==2.41.5
     # via pydantic
 pydeck==0.9.1
     # via streamlit
-pyparsing==3.2.3
+pyparsing==3.2.5
     # via
     #   httplib2
     #   matplotlib
-pyportfolioopt==1.5.5
+pyportfolioopt==1.5.6
     # via market-watch
 python-dateutil==2.9.0.post0
     # via
@@ -210,40 +215,41 @@ python-dateutil==2.9.0.post0
     #   pandas
 python-decouple==3.8
     # via streamlit-aggrid
-python-telegram-bot==22.0
+python-telegram-bot==22.5
     # via market-watch
 pytz==2025.2
     # via
     #   pandas
     #   yfinance
-referencing==0.36.2
+referencing==0.37.0
     # via
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.3
+requests==2.32.5
     # via
     #   google-api-core
     #   streamlit
     #   yfinance
     #   youtube-transcript-api
-rpds-py==0.24.0
+rpds-py==0.28.0
     # via
     #   jsonschema
     #   referencing
 rsa==4.9.1
     # via google-auth
-scipy==1.15.3
+scipy==1.16.3
     # via
     #   clarabel
     #   cvxpy
+    #   ecos
     #   market-watch
     #   osqp
     #   pyportfolioopt
     #   scs
     #   statsmodels
-scs==3.2.7.post2
+scs==3.2.9
     # via cvxpy
-setuptools==80.4.0
+setuptools==80.9.0
     # via osqp
 six==1.17.0
     # via python-dateutil
@@ -253,29 +259,31 @@ sniffio==1.3.1
     # via
     #   anyio
     #   openai
-soupsieve==2.7
+soupsieve==2.8
     # via beautifulsoup4
-sqlalchemy==2.0.40
+sqlalchemy==2.0.44
     # via sqlmodel
-sqlmodel==0.0.24
+sqlmodel==0.0.27
     # via market-watch
-statsmodels==0.14.4
+statsmodels==0.14.5
     # via market-watch
-streamlit==1.45.0
+streamlit==1.51.0
     # via
     #   market-watch
     #   streamlit-aggrid
-streamlit-aggrid==1.1.4.post1
+streamlit-aggrid==1.2.0.post1
     # via market-watch
 tenacity==9.1.2
-    # via streamlit
+    # via
+    #   plotly
+    #   streamlit
 toml==0.10.2
     # via streamlit
-tornado==6.4.2
+tornado==6.5.2
     # via streamlit
 tqdm==4.67.1
     # via openai
-typing-extensions==4.13.2
+typing-extensions==4.15.0
     # via
     #   altair
     #   anyio
@@ -287,13 +295,13 @@ typing-extensions==4.13.2
     #   sqlalchemy
     #   streamlit
     #   typing-inspection
-typing-inspection==0.4.0
+typing-inspection==0.4.2
     # via pydantic
 tzdata==2025.2
     # via pandas
-uritemplate==4.1.1
+uritemplate==4.2.0
     # via google-api-python-client
-urllib3==2.4.0
+urllib3==2.5.0
     # via requests
 watchdog==6.0.0 ; sys_platform != 'darwin'
     # via streamlit
@@ -301,7 +309,7 @@ websockets==15.0.1
     # via yfinance
 win32-setctime==1.2.0 ; sys_platform == 'win32'
     # via loguru
-yfinance==0.2.59
+yfinance==0.2.66
     # via market-watch
-youtube-transcript-api==1.0.3
+youtube-transcript-api==1.2.3
     # via market-watch
