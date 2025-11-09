@@ -32,7 +32,7 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 managed = true
-dev-dependencies = [
+dependency-groups.dev = [
     "black",
     "watchdog",
     "pygithub",
