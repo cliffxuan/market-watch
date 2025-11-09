@@ -14,13 +14,14 @@ def get_hist(ticker: str) -> pd.DataFrame:
     return yf.Ticker(ticker).history(period="max")
 
 
-def main():
+def main() -> None:
     st.markdown("# Pi Cycle Top Indicator")
     ticker = st.text_input("ticker", value="BTC-USD")
     hist = get_hist(ticker)
     df = hist.loc[:, ["Close", "Volume"]]
     df["111DMA"] = hist["Close"].rolling(window=111).mean()
     df["350DMA x 2"] = hist["Close"].rolling(window=350).mean() * 2
+    df["ratio"] = df["111DMA"] / df["350DMA x 2"]
 
     df_above = df[df["111DMA"] > df["350DMA x 2"]]
     cross_dates = []
@@ -38,6 +39,7 @@ def main():
         prev_date = date
 
     dfs_price_around = {}
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.7, 0.3])
     fig = px.line(
         df[["Close", "111DMA", "350DMA x 2"]],
         log_y=True,
@@ -57,6 +59,7 @@ def main():
             & (df.index >= date - pd.Timedelta(days=padding))
         ]
     st.plotly_chart(fig, config={"scrollZoom": True})
+    st.plotly_chart(px.line(df["ratio"]), config={"scrollZoom": True})
 
     st.markdown("## Local Price Actions")
     st.columns(2)[0].slider(
