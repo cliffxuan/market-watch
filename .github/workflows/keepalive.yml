@@ -26,4 +26,4 @@ jobs:
       - name: Verify script compiles
         run: |
           cd st-keep-warm
-          python -m compileall main.py
+          python main.py
