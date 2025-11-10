@@ -7,12 +7,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  ping:
+  verify:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Ping Streamlit app
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
         run: |
-          curl -fsS --max-time 15 \
-            --retry 3 --retry-delay 5 --retry-connrefused \
-            -H 'User-Agent: GitHubActions-keepalive' \
-            -o /dev/null https://market-watch.streamlit.app/
+          python -m pip install --upgrade pip
+          pip install playwright
+          playwright install chromium
+
+      - name: Verify script compiles
+        run: |
+          cd st-keep-warm
+          python -m compileall main.py
