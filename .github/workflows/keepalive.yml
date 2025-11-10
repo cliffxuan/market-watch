@@ -23,7 +23,5 @@ jobs:
           pip install playwright
           playwright install chromium
 
-      - name: Verify script compiles
-        run: |
-          cd st-keep-warm
-          python main.py
+      - name: Open Streamlit App
+        run: python st-keep-warm/main.py
