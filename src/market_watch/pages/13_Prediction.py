@@ -1,10 +1,9 @@
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import yfinance as yf
 from sklearn.linear_model import LinearRegression
-
-from market_watch.utils import set_page_config_once
 
 
 def prepare_data(data, window=5):
@@ -20,16 +19,16 @@ def train_model(btc):
     if len(close_prices) < 6:
         raise ValueError("❌ Not enough data to train model (need at least 6 rows).")
 
-    X, y = prepare_data(close_prices)
-    if X.size == 0:
+    x, y = prepare_data(close_prices)
+    if x.size == 0:
         raise ValueError("❌ X is empty. prepare_data() produced no samples.")
 
     model = LinearRegression()
-    model.fit(X, y)
-    return model, X, y
+    model.fit(x, y)
+    return model, x, y
 
 
-def load_data():
+def load_data() -> pd.DataFrame:
     btc = yf.Ticker("BTC-USD").history(period="10y")
     if btc is None or btc.empty:
         raise ValueError("❌ Failed to download BTC-USD data. DataFrame is empty.")
@@ -38,7 +37,7 @@ def load_data():
 
 
 def main():
-    st.title("📈 Bitcoin Price Prediction Dashboard")
+    st.title("📈 Bitcoin Price Prediction")
 
     # Load data
     btc = load_data()
@@ -63,7 +62,7 @@ def main():
 
     # Train model
     try:
-        model, X, y = train_model(btc)
+        model, x, y = train_model(btc)
     except Exception as e:
         st.error(f"Model training failed: {e}")
         st.stop()
@@ -76,7 +75,7 @@ def main():
     st.metric(label="Predicted Close Price", value=f"${predicted_price:,.2f}")
 
     # Plot actual vs predicted (training fit)
-    y_pred = model.predict(X)
+    y_pred = model.predict(x)
     x_idx = np.arange(len(y))
     fig_pred = go.Figure()
     fig_pred.add_trace(
@@ -106,5 +105,7 @@ def main():
 
 
 if __name__ == "__main__":
+    from market_watch.utils import set_page_config_once
+
     set_page_config_once()
     main()
