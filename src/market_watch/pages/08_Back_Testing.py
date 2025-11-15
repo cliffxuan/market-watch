@@ -50,7 +50,7 @@ def main():
     with result_cols[1]:
         cols = st.columns(2)
         cols[0].metric("end capital", f"{end_capital:,.0f}")
-        cols[1].metric("profit", f"{(end_capital / start_capital -1 )* 100:,.2f} %")
+        cols[1].metric("profit", f"{(end_capital / start_capital - 1) * 100:,.2f} %")
 
         buy_and_hold = (
             trade_df.iloc[0]["Size"] * df.iloc[-1]["Price"] + trade_df.iloc[0]["Cash"]
@@ -112,7 +112,7 @@ def main():
         col=1,
     )
     fig["layout"].update(width=1024, height=768)
-    st.plotly_chart(fig, config={"scrollZoom": True}, use_container_width=True)
+    st.plotly_chart(fig, config={"scrollZoom": True}, width="stretch")
 
     st.divider()
     st.markdown("## Refine Parameters")

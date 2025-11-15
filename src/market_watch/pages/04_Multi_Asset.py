@@ -33,10 +33,7 @@ if __name__ == "__main__":
         symbol="Asset Class Type",
     )
     fig.update_traces(marker={"size": 8})
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-    )
+    st.plotly_chart(fig, width="stretch")
     st.divider()
     st.markdown("### Correlation Matrices")
     corr = pd.read_csv(
@@ -47,4 +44,4 @@ if __name__ == "__main__":
         '<a href="https://am.jpmorgan.com/us/en/asset-management/institutional/insights/portfolio-insights/ltcma/interactive-assumptions-matrices/" target="_">data source</a>'
     )
     corr_heatmap = px.imshow(corr, text_auto=True)
-    st.plotly_chart(corr_heatmap, theme=None, use_container_width=True)
+    st.plotly_chart(corr_heatmap, theme=None, width="stretch")
