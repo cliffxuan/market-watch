@@ -1,8 +1,8 @@
 import numpy as np
+import plotly.graph_objects as go
 import streamlit as st
 import yfinance as yf
 from sklearn.linear_model import LinearRegression
-import plotly.graph_objects as go
 
 from market_watch.utils import set_page_config_once
 
