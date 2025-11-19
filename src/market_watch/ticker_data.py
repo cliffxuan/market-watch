@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -39,6 +40,9 @@ def get_tickers_hists(tickers: list[str]) -> pd.DataFrame:
         try:
             df = yf.Ticker(ticker).history(period="10y", raise_errors=True)
         except yf.exceptions.YFInvalidPeriodError:  # type: ignore
+            df = yf.Ticker(ticker).history(period="max", raise_errors=False)
+        except Exception:  # type: ignore
+            logging.info(f"Unexpected error getting ticker {ticker} for 10y")
             df = yf.Ticker(ticker).history(period="max", raise_errors=False)
         for col in unique_columns:
             combined_data[(col, ticker)] = df[col]
