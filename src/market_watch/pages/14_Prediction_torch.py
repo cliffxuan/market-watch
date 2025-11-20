@@ -1,20 +1,22 @@
+import random
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import torch
-import torch.nn as nn
 import yfinance as yf
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 from ta import add_all_ta_features  # Requires 'ta' library; pip install ta
+from torch import nn
 
 
 # For sentiment: Use X semantic search for real sentiment analysis via LLM
 def get_sentiment_score():
-    # Placeholder: In production, use xAI tools or API to fetch and analyze
-    # For demo, simulate with random; replace with actual LLM sentiment scoring
-    import random
+    # Placeholder: In production, integrate with X API or semantic search to fetch recent BTC posts
+    # Then use LLM to score average sentiment (-1 to 1)
+    # For demo, simulate with random
 
     return random.uniform(-1, 1)  # Bearish to bullish
 
@@ -30,7 +32,7 @@ def prepare_data(data, window=30, test_size=0.2):
     split = int(len(X) * (1 - test_size))
     X_train, X_test = torch.FloatTensor(X[:split]), torch.FloatTensor(X[split:])
     y_train, y_test = torch.FloatTensor(y[:split]), torch.FloatTensor(y[split:])
-    return X_train, y_train, X_test, y_test, scaler
+    return X_train, y_train, X_test, y_test, scaler, scaled_data, split
 
 
 class LSTMModel(nn.Module):
@@ -50,7 +52,13 @@ class LSTMModel(nn.Module):
 
 def train_model(btc, window=30, epochs=50, lr=0.001):
     features_df = add_all_ta_features(
-        btc, open="Open", high="High", low="Low", close="Close", volume="Volume"
+        btc,
+        open="Open",
+        high="High",
+        low="Low",
+        close="Close",
+        volume="Volume",
+        fillna=True,
     )
     features_df = features_df[
         ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv"]
@@ -58,7 +66,9 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
     features = features_df.values
     if len(features) < window + 1:
         raise ValueError(f"❌ Not enough data (need at least {window + 1} rows).")
-    X_train, y_train, X_test, y_test, scaler = prepare_data(features, window)
+    X_train, y_train, X_test, y_test, scaler, scaled_data, split = prepare_data(
+        features, window
+    )
     model = LSTMModel(input_size=features.shape[1])
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
@@ -99,28 +109,27 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
         rmse,
         mape,
         features_df,
+        inverted_y_test,
+        close_scale,
+        close_min,
+        split,
+        scaled_data,
     )
 
 
-def backtest(btc_test, y_pred_test):
-    # Align btc_test to y_test length (predictions start after window)
-    # Simple strategy: Buy if predicted > current close, sell otherwise
-    current_closes = btc_test["Close"].values
-    if len(y_pred_test) < len(current_closes):
-        current_closes = current_closes[-len(y_pred_test) :]  # Align to predictions
-    signals = np.sign(
-        y_pred_test - current_closes
-    )  # 1 if pred > current (buy), -1 sell
-    returns = (
-        signals * btc_test["Close"].pct_change().values[-len(signals) :]
-    )  # Daily returns
-    cumulative_returns = np.cumprod(1 + returns) - 1
+def backtest(features_df, inverted_y_pred, y_test_len):
+    close_t = features_df["Close"].iloc[-y_test_len - 1 : -1].values
+    signals = np.sign(inverted_y_pred - close_t)
+    pct_returns = features_df["Close"].pct_change().iloc[-y_test_len:].values
+    returns = signals * pct_returns
+    returns = returns[~np.isnan(returns)]  # Remove any NaNs (shouldn't be any)
+    cumulative = np.cumprod(1 + returns) - 1
     sharpe = (
         (np.mean(returns) / np.std(returns) * np.sqrt(252))
         if np.std(returns) > 0
         else 0
     )
-    total_return = cumulative_returns[-1] if len(cumulative_returns) > 0 else 0
+    total_return = cumulative[-1] if len(cumulative) > 0 else 0
     return sharpe, total_return
 
 
@@ -182,6 +191,11 @@ def main():
             rmse,
             mape,
             features_df,
+            inverted_y_test,
+            close_scale,
+            close_min,
+            split,
+            scaled_data,
         ) = train_model(btc, window, epochs)
     except Exception as e:
         st.error(f"Model training failed: {e}")
@@ -193,21 +207,9 @@ def main():
     col2.metric("Test MAPE", f"{mape:.2f}%")
 
     # Predict next day
-    last_window_df = add_all_ta_features(
-        btc.tail(window),
-        open="Open",
-        high="High",
-        low="Low",
-        close="Close",
-        volume="Volume",
-    )
-    last_features = last_window_df[
-        ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv"]
-    ].values
+    last_features = features_df.tail(window).values
     scaled_last = scaler.transform(last_features)
     predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
-    close_scale = scaler.scale_[0]
-    close_min = scaler.min_[0]
     predicted_price = (predicted_scaled.item() / close_scale) + close_min
 
     sentiment = get_sentiment_score()
@@ -220,7 +222,6 @@ def main():
     col3.metric("Adjusted Price", f"${adjusted_price:,.2f}")
 
     # Plot actual vs predicted
-    inverted_y_test = (y_test.numpy() / close_scale) + close_min
     fig_pred = go.Figure()
     fig_pred.add_trace(
         go.Scatter(
@@ -247,9 +248,7 @@ def main():
     st.plotly_chart(fig_pred, use_container_width=True)
 
     # Backtesting
-    test_start = len(features_df) - len(y_test)
-    btc_test = btc.iloc[-len(features_df) + test_start :]
-    sharpe, total_return = backtest(btc_test, inverted_y_pred)
+    sharpe, total_return = backtest(features_df, inverted_y_pred, len(y_test))
     st.subheader("Backtesting Results")
     col1, col2 = st.columns(2)
     col1.metric("Sharpe Ratio", f"{sharpe:.2f}")
