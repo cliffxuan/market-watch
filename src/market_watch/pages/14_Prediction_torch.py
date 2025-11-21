@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
@@ -11,27 +12,22 @@ from ta import add_all_ta_features
 from torch import nn
 
 
-# For sentiment: Use Crypto Fear & Greed Index from alternative.me
-def get_fear_and_greed_index() -> int:
+def fetch_historical_fng(limit=10000):
+    """Fetches historical Fear & Greed Index data."""
     try:
-        response = requests.get("https://api.alternative.me/fng/")
+        url = f"https://api.alternative.me/fng/?limit={limit}"
+        response = requests.get(url)
         response.raise_for_status()
-        data = response.json()
-        # Value is 0-100
-        return int(data["data"][0]["value"])
+        data = response.json()["data"]
+        df = pd.DataFrame(data)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
+        df["fng_value"] = df["value"].astype(int)
+        df = df.set_index("timestamp").sort_index()
+        # Keep only fng_value
+        return df[["fng_value"]]
     except Exception as e:
-        st.warning(f"Could not fetch Fear & Greed Index: {e}. Using neutral 50.")
-        return 50
-
-
-def get_sentiment_score():
-    fng_value = get_fear_and_greed_index()
-    # Normalize 0-100 to -1 to 1
-    # 0 (Extreme Fear) -> -1
-    # 50 (Neutral) -> 0
-    # 100 (Extreme Greed) -> 1
-    normalized_score = (fng_value - 50) / 50
-    return normalized_score, fng_value
+        st.warning(f"Could not fetch historical Fear & Greed Index: {e}")
+        return pd.DataFrame()
 
 
 def prepare_data(data, window=30, test_size=0.2):
@@ -74,7 +70,7 @@ class LSTMModel(nn.Module):
     def __init__(
         self, input_size=4, hidden_size=50, num_layers=1, dropout=0.2
     ):  # input_size for features
-        super(LSTMModel, self).__init__()
+        super().__init__()
         self.lstm = nn.LSTM(
             input_size,
             hidden_size,
@@ -107,7 +103,7 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
         fillna=True,
     )
     features_df = features_df[
-        ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv"]
+        ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
     ].dropna()
     features = features_df.values
     if len(features) < window + 1:
@@ -183,6 +179,23 @@ def load_data(period="10y") -> pd.DataFrame:
     btc = yf.Ticker("BTC-USD").history(period=period)
     if btc.empty:
         raise ValueError("❌ Failed to download BTC-USD data.")
+
+    # Ensure timezone naivety for merging
+    btc.index = btc.index.tz_localize(None)
+
+    # Fetch and merge Fear & Greed data
+    fng = fetch_historical_fng()
+    if not fng.empty:
+        # Merge on index (date)
+        # F&G data is daily, BTC is daily.
+        # We use 'left' join to keep all BTC rows, filling missing F&G with ffill
+        btc = btc.join(fng, how="left")
+        btc["fng_value"] = (
+            btc["fng_value"].ffill().fillna(50)
+        )  # Default to 50 if missing
+    else:
+        btc["fng_value"] = 50
+
     return btc
 
 
@@ -225,6 +238,8 @@ def main():
     )
     st.plotly_chart(fig_hist, width="stretch")
 
+    st.subheader("Historical Fear and Greed Index")
+    st.plotly_chart(px.line(btc, x=btc.index, y="fng_value"))
     # Train model
     try:
         (
@@ -259,14 +274,13 @@ def main():
     predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
     predicted_price = (predicted_scaled.item() / close_scale) + close_min
 
-    sentiment, fng_value = get_sentiment_score()
-    adjusted_price = predicted_price * (1 + 0.1 * sentiment)  # Adjust by sentiment
-
     st.subheader("Next Day BTC Price Prediction")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Raw Predicted Price", f"${predicted_price:,.2f}")
-    col2.metric("Fear & Greed Index", f"{fng_value} ({sentiment:.2f})")
-    col3.metric("Adjusted Price", f"${adjusted_price:,.2f}")
+    col1, col2 = st.columns(2)
+    col1.metric("Predicted Price", f"${predicted_price:,.2f}")
+
+    # Show F&G value used for prediction
+    last_fng = features_df["fng_value"].iloc[-1]
+    col2.metric("Current Fear & Greed", f"{int(last_fng)}")
 
     # Plot actual vs predicted
     test_dates = features_df.index[split + window :]
