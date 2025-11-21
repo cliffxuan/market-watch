@@ -1,38 +1,54 @@
-import random
-
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 import torch
 import yfinance as yf
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
-from ta import add_all_ta_features  # Requires 'ta' library; pip install ta
+from ta import add_all_ta_features
 from torch import nn
 
 
-# For sentiment: Use X semantic search for real sentiment analysis via LLM
-def get_sentiment_score():
-    # Placeholder: In production, integrate with X API or semantic search to fetch recent BTC posts
-    # Then use LLM to score average sentiment (-1 to 1)
-    # For demo, simulate with random
+# For sentiment: Use Crypto Fear & Greed Index from alternative.me
+def get_fear_and_greed_index() -> int:
+    try:
+        response = requests.get("https://api.alternative.me/fng/")
+        response.raise_for_status()
+        data = response.json()
+        # Value is 0-100
+        return int(data["data"][0]["value"])
+    except Exception as e:
+        st.warning(f"Could not fetch Fear & Greed Index: {e}. Using neutral 50.")
+        return 50
 
-    return random.uniform(-1, 1)  # Bearish to bullish
+
+def get_sentiment_score():
+    fng_value = get_fear_and_greed_index()
+    # Normalize 0-100 to -1 to 1
+    # 0 (Extreme Fear) -> -1
+    # 50 (Neutral) -> 0
+    # 100 (Extreme Greed) -> 1
+    normalized_score = (fng_value - 50) / 50
+    return normalized_score, fng_value
 
 
 def prepare_data(data, window=30, test_size=0.2):
     scaler = MinMaxScaler()
     scaled_data = scaler.fit_transform(data)
-    X, y = [], []
+    x_inputs, y = [], []
     for i in range(len(scaled_data) - window):
-        X.append(scaled_data[i : i + window])
+        x_inputs.append(scaled_data[i : i + window])
         y.append(scaled_data[i + window, 0])  # Predict close price
-    X, y = np.array(X), np.array(y)
-    split = int(len(X) * (1 - test_size))
-    X_train, X_test = torch.FloatTensor(X[:split]), torch.FloatTensor(X[split:])
+    x_inputs, y = np.array(x_inputs), np.array(y)
+    split = int(len(x_inputs) * (1 - test_size))
+    x_train, x_test = (
+        torch.FloatTensor(x_inputs[:split]),
+        torch.FloatTensor(x_inputs[split:]),
+    )
     y_train, y_test = torch.FloatTensor(y[:split]), torch.FloatTensor(y[split:])
-    return X_train, y_train, X_test, y_test, scaler, scaled_data, split
+    return x_train, y_train, x_test, y_test, scaler, scaled_data, split
 
 
 class LSTMModel(nn.Module):
@@ -66,17 +82,17 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
     features = features_df.values
     if len(features) < window + 1:
         raise ValueError(f"❌ Not enough data (need at least {window + 1} rows).")
-    X_train, y_train, X_test, y_test, scaler, scaled_data, split = prepare_data(
+    x_train, y_train, x_test, y_test, scaler, scaled_data, split = prepare_data(
         features, window
     )
     model = LSTMModel(input_size=features.shape[1])
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
 
-    for epoch in range(epochs):
+    for _ in range(epochs):
         model.train()
         optimizer.zero_grad()
-        outputs = model(X_train)
+        outputs = model(x_train)
         loss = criterion(outputs, y_train.unsqueeze(1))
         loss.backward()
         optimizer.step()
@@ -84,7 +100,7 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
     # Evaluate on original scale
     model.eval()
     with torch.no_grad():
-        y_pred_test = model(X_test).numpy().flatten()
+        y_pred_test = model(x_test).numpy().flatten()
         y_test_np = y_test.numpy()
         # Inverse scale using Close's params (feature 0)
         close_scale = scaler.scale_[0]
@@ -101,9 +117,9 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
     return (
         model,
         scaler,
-        X_train,
+        x_train,
         y_train,
-        X_test,
+        x_test,
         y_test,
         inverted_y_pred,
         rmse,
@@ -143,7 +159,8 @@ def load_data(period="10y") -> pd.DataFrame:
 def main():
     st.title("📈 Advanced Bitcoin Algo Trading Predictor with LLM & DL")
     st.markdown(
-        "Leveraging deep learning (LSTM) for sequence modeling and LLM-driven sentiment from X for adjusted predictions. Includes backtesting for trading strategies."
+        "Leveraging deep learning (LSTM) for sequence modeling and LLM-driven sentiment"
+        " from X for adjusted predictions. Includes backtesting for trading strategies."
     )
 
     # User inputs
@@ -176,16 +193,16 @@ def main():
         yaxis_title="Price (USD)",
         template="plotly_white",
     )
-    st.plotly_chart(fig_hist, use_container_width=True)
+    st.plotly_chart(fig_hist, width="stretch")
 
     # Train model
     try:
         (
             model,
             scaler,
-            X_train,
+            x_train,
             y_train,
-            X_test,
+            x_test,
             y_test,
             inverted_y_pred,
             rmse,
@@ -212,20 +229,21 @@ def main():
     predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
     predicted_price = (predicted_scaled.item() / close_scale) + close_min
 
-    sentiment = get_sentiment_score()
+    sentiment, fng_value = get_sentiment_score()
     adjusted_price = predicted_price * (1 + 0.1 * sentiment)  # Adjust by sentiment
 
     st.subheader("Next Day BTC Price Prediction")
     col1, col2, col3 = st.columns(3)
     col1.metric("Raw Predicted Price", f"${predicted_price:,.2f}")
-    col2.metric("Sentiment Score", f"{sentiment:.2f}")
+    col2.metric("Fear & Greed Index", f"{fng_value} ({sentiment:.2f})")
     col3.metric("Adjusted Price", f"${adjusted_price:,.2f}")
 
     # Plot actual vs predicted
+    test_dates = features_df.index[split + window :]
     fig_pred = go.Figure()
     fig_pred.add_trace(
         go.Scatter(
-            x=np.arange(len(inverted_y_test)),
+            x=test_dates,
             y=inverted_y_test,
             mode="lines",
             name="Actual",
@@ -233,7 +251,7 @@ def main():
     )
     fig_pred.add_trace(
         go.Scatter(
-            x=np.arange(len(inverted_y_pred)),
+            x=test_dates,
             y=inverted_y_pred,
             mode="lines",
             name="Predicted",
@@ -241,11 +259,11 @@ def main():
     )
     fig_pred.update_layout(
         title="Test Set: Actual vs Predicted",
-        xaxis_title="Sample",
+        xaxis_title="Date",
         yaxis_title="Price (USD)",
         template="plotly_white",
     )
-    st.plotly_chart(fig_pred, use_container_width=True)
+    st.plotly_chart(fig_pred, width="stretch")
 
     # Backtesting
     sharpe, total_return = backtest(features_df, inverted_y_pred, len(y_test))
