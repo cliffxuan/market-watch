@@ -35,35 +35,65 @@ def get_sentiment_score():
 
 
 def prepare_data(data, window=30, test_size=0.2):
+    # Split raw data first to avoid leakage
+    split_idx = int(len(data) * (1 - test_size))
+    train_data = data[:split_idx]
+    # Overlap window for test set to ensure continuity
+    test_data = data[split_idx - window :]
+
     scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(data)
-    x_inputs, y = [], []
-    for i in range(len(scaled_data) - window):
-        x_inputs.append(scaled_data[i : i + window])
-        y.append(scaled_data[i + window, 0])  # Predict close price
-    x_inputs, y = np.array(x_inputs), np.array(y)
-    split = int(len(x_inputs) * (1 - test_size))
-    x_train, x_test = (
-        torch.FloatTensor(x_inputs[:split]),
-        torch.FloatTensor(x_inputs[split:]),
-    )
-    y_train, y_test = torch.FloatTensor(y[:split]), torch.FloatTensor(y[split:])
+    # Fit ONLY on training data
+    scaler.fit(train_data)
+
+    train_scaled = scaler.transform(train_data)
+    test_scaled = scaler.transform(test_data)
+
+    def create_sequences(dataset):
+        x_inputs, y = [], []
+        for i in range(len(dataset) - window):
+            x_inputs.append(dataset[i : i + window])
+            y.append(dataset[i + window, 0])  # Predict close price
+        return np.array(x_inputs), np.array(y)
+
+    x_train, y_train = create_sequences(train_scaled)
+    x_test, y_test = create_sequences(test_scaled)
+
+    x_train = torch.FloatTensor(x_train)
+    y_train = torch.FloatTensor(y_train)
+    x_test = torch.FloatTensor(x_test)
+    y_test = torch.FloatTensor(y_test)
+
+    # Reconstruct full scaled data for consistency (though strictly only scaler matters)
+    scaled_data = np.concatenate((train_scaled, test_scaled[window:]), axis=0)
+    split = len(x_train)
+
     return x_train, y_train, x_test, y_test, scaler, scaled_data, split
 
 
 class LSTMModel(nn.Module):
     def __init__(
-        self, input_size=4, hidden_size=50, num_layers=1
+        self, input_size=4, hidden_size=50, num_layers=1, dropout=0.2
     ):  # input_size for features
         super(LSTMModel, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(
+            input_size,
+            hidden_size,
+            num_layers,
+            batch_first=True,
+        )
+        self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        h0 = torch.zeros(self.lstm.num_layers, x.size(0), self.lstm.hidden_size)
-        c0 = torch.zeros(self.lstm.num_layers, x.size(0), self.lstm.hidden_size)
+        h0 = torch.zeros(self.lstm.num_layers, x.size(0), self.lstm.hidden_size).to(
+            x.device
+        )
+        c0 = torch.zeros(self.lstm.num_layers, x.size(0), self.lstm.hidden_size).to(
+            x.device
+        )
         out, _ = self.lstm(x, (h0, c0))
-        return self.fc(out[:, -1, :])
+        out = self.dropout(out[:, -1, :])
+        return self.fc(out)
 
 
 def train_model(btc, window=30, epochs=50, lr=0.001):
