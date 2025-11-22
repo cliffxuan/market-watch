@@ -12,7 +12,7 @@ from ta import add_all_ta_features
 from torch import nn
 
 
-def fetch_historical_fng(limit=10000):
+def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
     """Fetches historical Fear & Greed Index data."""
     try:
         url = f"https://api.alternative.me/fng/?limit={limit}"
@@ -30,7 +30,17 @@ def fetch_historical_fng(limit=10000):
         return pd.DataFrame()
 
 
-def prepare_data(data, window=30, test_size=0.2):
+def prepare_data(
+    data: np.ndarray, window: int = 30, test_size: float = 0.2
+) -> tuple[
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    MinMaxScaler,
+    np.ndarray,
+    int,
+]:
     # Split raw data first to avoid leakage
     split_idx = int(len(data) * (1 - test_size))
     train_data = data[:split_idx]
@@ -44,7 +54,7 @@ def prepare_data(data, window=30, test_size=0.2):
     train_scaled = scaler.transform(train_data)
     test_scaled = scaler.transform(test_data)
 
-    def create_sequences(dataset):
+    def create_sequences(dataset: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         x_inputs, y = [], []
         for i in range(len(dataset) - window):
             x_inputs.append(dataset[i : i + window])
@@ -68,7 +78,11 @@ def prepare_data(data, window=30, test_size=0.2):
 
 class LSTMModel(nn.Module):
     def __init__(
-        self, input_size=4, hidden_size=50, num_layers=1, dropout=0.2
+        self,
+        input_size: int = 4,
+        hidden_size: int = 50,
+        num_layers: int = 1,
+        dropout: float = 0.2,
     ):  # input_size for features
         super().__init__()
         self.lstm = nn.LSTM(
@@ -80,7 +94,7 @@ class LSTMModel(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_size, 1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         h0 = torch.zeros(self.lstm.num_layers, x.size(0), self.lstm.hidden_size).to(
             x.device
         )
@@ -92,7 +106,25 @@ class LSTMModel(nn.Module):
         return self.fc(out)
 
 
-def train_model(btc, window=30, epochs=50, lr=0.001):
+def train_model(
+    btc: pd.DataFrame, window: int = 30, epochs: int = 50, lr: float = 0.001
+) -> tuple[
+    LSTMModel,
+    MinMaxScaler,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    np.ndarray,
+    float,
+    float,
+    pd.DataFrame,
+    np.ndarray,
+    float,
+    float,
+    int,
+    np.ndarray,
+]:
     features_df = add_all_ta_features(
         btc,
         open="Open",
@@ -151,7 +183,7 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
     model.eval()
     with torch.no_grad():
         y_pred_test = model(x_test).numpy().flatten()
-        y_test_np = y_test.numpy()
+        # y_test_np = y_test.numpy()
 
         # Inverse scale to get predicted Log Returns
         # scaler column 0 is Log_Ret
@@ -159,7 +191,7 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
         ret_min = scaler.min_[0]
 
         pred_log_ret = (y_pred_test - ret_min) / ret_scale
-        actual_log_ret = (y_test_np - ret_min) / ret_scale
+        # actual_log_ret = (y_test_np - ret_min) / ret_scale
 
         # Reconstruct Prices
         # We need the Close price just before the test predictions start
@@ -204,7 +236,9 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
     )
 
 
-def backtest(features_df, inverted_y_pred, y_test_len):
+def backtest(
+    features_df: pd.DataFrame, inverted_y_pred: np.ndarray, y_test_len: int
+) -> tuple[float, float]:
     close_t = features_df["Close"].iloc[-y_test_len - 1 : -1].values
     signals = np.sign(inverted_y_pred - close_t)
     pct_returns = features_df["Close"].pct_change().iloc[-y_test_len:].values
@@ -220,19 +254,28 @@ def backtest(features_df, inverted_y_pred, y_test_len):
     return sharpe, total_return
 
 
-def predict_future(model, scaler, btc_data, window, days=365):
+def predict_future(
+    model: LSTMModel,
+    scaler: MinMaxScaler,
+    btc_data: pd.DataFrame,
+    window: int,
+    days: int = 365,
+) -> pd.DataFrame:
     """
     Autoregressive prediction for future days.
     """
     future_btc = btc_data.copy()
 
-    # We need to ensure we have the scaler fitted on the correct columns if we were to inverse transform features
-    # But here we only care about the target (Close) which is column 0 in our specific scaler logic if we used it that way.
-    # Wait, the scaler in train_model was fitted on 'train_data' which was just the features array.
-    # We need to be careful. The model expects scaled features.
+    # We need to ensure we have the scaler fitted on the correct columns if we were
+    # to inverse transform features. But here we only care about the target (Close)
+    # which is column 0 in our specific scaler logic if we used it that way.
+    # Wait, the scaler in train_model was fitted on 'train_data' which was just
+    # the features array. We need to be careful. The model expects scaled features.
 
     # Let's look at how features are constructed in train_model:
-    # features_df = ... [["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]]
+    # features_df = ... [
+    #     ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
+    # ]
     # scaler.fit(train_data) -> train_data is these 5 columns.
 
     # So to predict, we need to:
@@ -278,7 +321,7 @@ def predict_future(model, scaler, btc_data, window, days=365):
 
         # Calculate Log_Ret and dist_sma_fast
         features_df["Log_Ret"] = np.log(
-            features_df["Close"] / features_df["Close"].shift(1)
+            features_df["Close"] / features_df["Close"].shift(1)  # type: ignore
         )
         features_df["dist_sma_fast"] = np.log(
             features_df["Close"] / features_df["trend_sma_fast"]
@@ -287,7 +330,7 @@ def predict_future(model, scaler, btc_data, window, days=365):
         # Drop NaNs created by shift/TA
         features_df = features_df[
             ["Log_Ret", "dist_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
-        ].dropna()
+        ].dropna()  # type: ignore
 
         # Get last window
         last_features = features_df.tail(window).values
@@ -328,7 +371,7 @@ def predict_future(model, scaler, btc_data, window, days=365):
                 "Volume": [future_btc["Volume"].iloc[-1]],
                 "fng_value": [future_btc["fng_value"].iloc[-1]],
             },
-            index=[next_date],
+            index=[next_date],  # type: ignore
         )
 
         future_btc = pd.concat([future_btc, new_row])
@@ -340,13 +383,14 @@ def predict_future(model, scaler, btc_data, window, days=365):
     return future_btc.iloc[-days:]
 
 
-def load_data(period="10y") -> pd.DataFrame:
+def load_data(period: str = "10y") -> pd.DataFrame:
     btc = yf.Ticker("BTC-USD").history(period=period)
     if btc.empty:
         raise ValueError("❌ Failed to download BTC-USD data.")
 
     # Ensure timezone naivety for merging
-    btc.index = btc.index.tz_localize(None)
+    if isinstance(btc.index, pd.DatetimeIndex):
+        btc.index = btc.index.tz_localize(None)
 
     # Fetch and merge Fear & Greed data
     fng = fetch_historical_fng()
@@ -364,7 +408,7 @@ def load_data(period="10y") -> pd.DataFrame:
     return btc
 
 
-def main():
+def main() -> None:
     st.title("📈 Advanced Bitcoin Algo Trading Predictor with LLM & DL")
     st.markdown(
         "Leveraging deep learning (LSTM) for sequence modeling and LLM-driven sentiment"
@@ -410,9 +454,9 @@ def main():
         (
             model,
             scaler,
-            x_train,
-            y_train,
-            x_test,
+            _,
+            _,
+            _,
             y_test,
             inverted_y_pred,
             rmse,
@@ -422,7 +466,7 @@ def main():
             ret_scale,
             ret_min,
             split,
-            scaled_data,
+            _,
         ) = train_model(btc, window, epochs)
     except Exception as e:
         st.error(f"Model training failed: {e}")
@@ -499,7 +543,8 @@ def main():
     # Future Prediction
     st.subheader("Future Prediction")
     st.markdown(
-        "Predict prices into the future (Autoregressive). **Warning: Highly speculative.**"
+        "Predict prices into the future (Autoregressive). "
+        "**Warning: Highly speculative.**"
     )
 
     forecast_days = st.slider("Days to Predict", 30, 365, 365)
@@ -521,7 +566,7 @@ def main():
                     y=btc["Close"].iloc[-90:],
                     mode="lines",
                     name="Historical (Last 90 days)",
-                    line=dict(color="gray"),
+                    line={"color": "gray"},
                 )
             )
             # Future
@@ -531,7 +576,7 @@ def main():
                     y=future_df["Close"],
                     mode="lines",
                     name="Forecast",
-                    line=dict(color="blue", dash="dash"),
+                    line={"color": "blue", "dash": "dash"},
                 )
             )
             fig_future.update_layout(
