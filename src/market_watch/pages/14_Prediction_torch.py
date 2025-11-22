@@ -30,6 +30,14 @@ def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def create_sequences(dataset: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray]:
+    x_inputs, y = [], []
+    for i in range(len(dataset) - window):
+        x_inputs.append(dataset[i : i + window])
+        y.append(dataset[i + window, 0])  # Predict close price
+    return np.array(x_inputs), np.array(y)
+
+
 def prepare_data(
     data: np.ndarray, window: int = 30, test_size: float = 0.2
 ) -> tuple[
@@ -54,15 +62,8 @@ def prepare_data(
     train_scaled = scaler.transform(train_data)
     test_scaled = scaler.transform(test_data)
 
-    def create_sequences(dataset: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        x_inputs, y = [], []
-        for i in range(len(dataset) - window):
-            x_inputs.append(dataset[i : i + window])
-            y.append(dataset[i + window, 0])  # Predict close price
-        return np.array(x_inputs), np.array(y)
-
-    x_train, y_train = create_sequences(train_scaled)
-    x_test, y_test = create_sequences(test_scaled)
+    x_train, y_train = create_sequences(train_scaled, window)
+    x_test, y_test = create_sequences(test_scaled, window)
 
     x_train = torch.FloatTensor(x_train)
     y_train = torch.FloatTensor(y_train)
