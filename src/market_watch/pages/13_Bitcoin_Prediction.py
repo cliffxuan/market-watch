@@ -32,48 +32,52 @@ def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def calculate_technical_indicators(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
-    """Calculate technical indicators without lookahead bias"""
+def calculate_technical_indicators(
+    df: pd.DataFrame, window: int = 20
+) -> pd.DataFrame:
+    """
+    Calculate technical indicators ensuring no look-ahead bias.
+    All calculations use only past data.
+    """
     df = df.copy()
 
-    # Ensure we have the required columns
-    required_columns = ["Open", "High", "Low", "Close", "Volume"]
-    for col in required_columns:
-        if col not in df.columns:
-            raise ValueError(f"Missing required column: {col}")
+    # Validate required columns
+    required = ["Open", "High", "Low", "Close", "Volume"]
+    if not all(col in df.columns for col in required):
+        raise ValueError(f"Missing required columns. Need: {required}")
 
-    # Simple Moving Averages
-    df["SMA_20"] = df["Close"].rolling(window=window).mean()
-    df["SMA_50"] = df["Close"].rolling(window=50).mean()
-    df["EMA_20"] = df["Close"].ewm(span=window).mean()
+    # Price-based indicators (naturally backward-looking)
+    df["SMA_20"] = df["Close"].rolling(window=20, min_periods=20).mean()
+    df["SMA_50"] = df["Close"].rolling(window=50, min_periods=50).mean()
+    df["EMA_20"] = df["Close"].ewm(span=20, adjust=False).mean()
 
-    # RSI calculation
+    # RSI (14-period) - proper calculation
     delta = df["Close"].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
+    gain = delta.clip(lower=0).rolling(window=14, min_periods=14).mean()
+    loss = -delta.clip(upper=0).rolling(window=14, min_periods=14).mean()
+    rs = gain / loss.replace(0, np.nan)  # Avoid division by zero
     df["RSI"] = 100 - (100 / (1 + rs))
 
     # MACD
-    exp1 = df["Close"].ewm(span=12).mean()
-    exp2 = df["Close"].ewm(span=26).mean()
-    df["MACD"] = exp1 - exp2
-    df["MACD_Signal"] = df["MACD"].ewm(span=9).mean()
+    ema12 = df["Close"].ewm(span=12, adjust=False).mean()
+    ema26 = df["Close"].ewm(span=26, adjust=False).mean()
+    df["MACD"] = ema12 - ema26
+    df["MACD_Signal"] = df["MACD"].ewm(span=9, adjust=False).mean()
     df["MACD_Histogram"] = df["MACD"] - df["MACD_Signal"]
 
     # Bollinger Bands
-    df["BB_Middle"] = df["Close"].rolling(window=20).mean()
-    bb_std = df["Close"].rolling(window=20).std()
-    df["BB_Upper"] = df["BB_Middle"] + (bb_std * 2)
-    df["BB_Lower"] = df["BB_Middle"] - (bb_std * 2)
-    df["BB_Width"] = (df["BB_Upper"] - df["BB_Lower"]) / df["BB_Middle"]
+    bb_middle = df["Close"].rolling(window=20, min_periods=20).mean()
+    bb_std = df["Close"].rolling(window=20, min_periods=20).std()
+    df["BB_Upper"] = bb_middle + (bb_std * 2)
+    df["BB_Lower"] = bb_middle - (bb_std * 2)
+    df["BB_Width"] = (df["BB_Upper"] - df["BB_Lower"]) / bb_middle
     df["BB_Position"] = (df["Close"] - df["BB_Lower"]) / (
         df["BB_Upper"] - df["BB_Lower"]
     )
 
     # Volume indicators
-    df["Volume_SMA"] = df["Volume"].rolling(window=20).mean()
-    df["Volume_Ratio"] = df["Volume"] / df["Volume_SMA"]
+    df["Volume_SMA"] = df["Volume"].rolling(window=20, min_periods=20).mean()
+    df["Volume_Ratio"] = df["Volume"] / df["Volume_SMA"].replace(0, np.nan)
 
     return df
 
@@ -310,7 +314,7 @@ def improved_train_model(  # noqa: C901
 
     # Calculate technical indicators
     try:
-        btc_tech = calculate_technical_indicators(btc)
+        btc_tech = calculate_technical_indicators(btc, window=window)
     except Exception as e:
         st.warning(
             f"Technical indicators calculation failed: {e}. Using basic features."
@@ -549,7 +553,7 @@ def robust_future_prediction(
         # 1. Get last known features from the dataframe used in training (if possible)
         #    But we only have btc_data (raw).
         #    We need to re-calculate features for btc_data.
-        btc_tech = calculate_technical_indicators(btc_data)
+        btc_tech = calculate_technical_indicators(btc_data, window)
         btc_stationary = create_stationary_features(btc_tech)
 
         # Ensure we have all needed columns
