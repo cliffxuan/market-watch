@@ -105,6 +105,11 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
     features_df = features_df[
         ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
     ].dropna()
+
+    # Log-transform price-related features to ensure positive predictions and stability
+    features_df["Close"] = np.log(features_df["Close"])
+    features_df["trend_sma_fast"] = np.log(features_df["trend_sma_fast"])
+
     features = features_df.values
     if len(features) < window + 1:
         raise ValueError(f"❌ Not enough data (need at least {window + 1} rows).")
@@ -129,10 +134,18 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
         y_pred_test = model(x_test).numpy().flatten()
         y_test_np = y_test.numpy()
         # Inverse scale using Close's params (feature 0)
+        # Inverse scale using Close's params (feature 0)
         close_scale = scaler.scale_[0]
         close_min = scaler.min_[0]
-        inverted_y_test = (y_test_np / close_scale) + close_min
-        inverted_y_pred = (y_pred_test / close_scale) + close_min
+
+        # Inverse transform to get Log Prices
+        inverted_y_test_log = (y_test_np - close_min) / close_scale
+        inverted_y_pred_log = (y_pred_test - close_min) / close_scale
+
+        # Convert Log Prices back to Real Prices
+        inverted_y_test = np.exp(inverted_y_test_log)
+        inverted_y_pred = np.exp(inverted_y_pred_log)
+
         rmse = np.sqrt(mean_squared_error(inverted_y_test, inverted_y_pred))
         mape = (
             mean_absolute_percentage_error(inverted_y_test, inverted_y_pred) * 100
@@ -173,6 +186,110 @@ def backtest(features_df, inverted_y_pred, y_test_len):
     )
     total_return = cumulative[-1] if len(cumulative) > 0 else 0
     return sharpe, total_return
+
+
+def predict_future(model, scaler, btc_data, window, days=365):
+    """
+    Autoregressive prediction for future days.
+    """
+    future_btc = btc_data.copy()
+
+    # We need to ensure we have the scaler fitted on the correct columns if we were to inverse transform features
+    # But here we only care about the target (Close) which is column 0 in our specific scaler logic if we used it that way.
+    # Wait, the scaler in train_model was fitted on 'train_data' which was just the features array.
+    # We need to be careful. The model expects scaled features.
+
+    # Let's look at how features are constructed in train_model:
+    # features_df = ... [["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]]
+    # scaler.fit(train_data) -> train_data is these 5 columns.
+
+    # So to predict, we need to:
+    # 1. Get the last 'window' rows of features from future_btc
+    # 2. Scale them
+    # 3. Predict
+    # 4. Inverse scale the prediction (using column 0 of scaler)
+    # 5. Append new row to future_btc
+    # 6. Re-calculate features
+
+    # Progress bar
+    progress_bar = st.progress(0)
+
+    for i in range(days):
+        # 1. Calculate features on current data
+        # Optimization: Only use the last 200 rows to calculate TA.
+        # Most indicators (RSI, SMA) need limited history.
+        # This prevents the dataframe from growing indefinitely in the TA calculation.
+
+        ta_window_size = 200
+        if len(future_btc) > ta_window_size:
+            calc_df = future_btc.tail(ta_window_size).copy()
+        else:
+            calc_df = future_btc.copy()
+
+        features_df = add_all_ta_features(
+            calc_df,
+            open="Open",
+            high="High",
+            low="Low",
+            close="Close",
+            volume="Volume",
+            fillna=True,
+        )
+        features_df = features_df[
+            ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
+        ].fillna(0)
+
+        # Log-transform price features for the model
+        features_df["Close"] = np.log(features_df["Close"])
+        features_df["trend_sma_fast"] = np.log(features_df["trend_sma_fast"])
+
+        # Get last window
+        last_features = features_df.tail(window).values
+
+        # Scale
+        scaled_last = scaler.transform(last_features)
+
+        # Predict
+        with torch.no_grad():
+            model.eval()
+            pred_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
+
+        # Inverse scale (Column 0 is Close)
+        # pred_scaled is [1, 1]
+        pred_val_scaled = pred_scaled.item()
+
+        # scaler.scale_[0] and scaler.min_[0] are for the first column (Close)
+        pred_price_log = (pred_val_scaled - scaler.min_[0]) / scaler.scale_[0]
+        pred_price = np.exp(pred_price_log)
+
+        # Append new row
+        last_date = future_btc.index[-1]
+        next_date = last_date + pd.Timedelta(days=1)
+
+        # Assumptions for new row:
+        # Open/High/Low = Predicted Close (neutral assumption)
+        # Volume = Last Volume
+        # F&G = Last F&G
+
+        new_row = pd.DataFrame(
+            {
+                "Open": [pred_price],
+                "High": [pred_price],
+                "Low": [pred_price],
+                "Close": [pred_price],
+                "Volume": [future_btc["Volume"].iloc[-1]],
+                "fng_value": [future_btc["fng_value"].iloc[-1]],
+            },
+            index=[next_date],
+        )
+
+        future_btc = pd.concat([future_btc, new_row])
+
+        if i % 10 == 0:
+            progress_bar.progress((i + 1) / days)
+
+    progress_bar.empty()
+    return future_btc.iloc[-days:]
 
 
 def load_data(period="10y") -> pd.DataFrame:
@@ -272,7 +389,8 @@ def main():
     last_features = features_df.tail(window).values
     scaled_last = scaler.transform(last_features)
     predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
-    predicted_price = (predicted_scaled.item() / close_scale) + close_min
+    predicted_log_price = (predicted_scaled.item() - close_min) / close_scale
+    predicted_price = np.exp(predicted_log_price)
 
     st.subheader("Next Day BTC Price Prediction")
     col1, col2 = st.columns(2)
@@ -314,7 +432,54 @@ def main():
     st.subheader("Backtesting Results")
     col1, col2 = st.columns(2)
     col1.metric("Sharpe Ratio", f"{sharpe:.2f}")
+    col1.metric("Sharpe Ratio", f"{sharpe:.2f}")
     col2.metric("Total Return", f"{total_return * 100:.2f}%")
+
+    # Future Prediction
+    st.subheader("Future Prediction")
+    st.markdown(
+        "Predict prices into the future (Autoregressive). **Warning: Highly speculative.**"
+    )
+
+    forecast_days = st.slider("Days to Predict", 30, 365, 365)
+
+    if st.button("Predict Future"):
+        with st.spinner(f"Generating {forecast_days} days of predictions..."):
+            # We need the original btc dataframe with OHLCV for the loop
+            # 'btc' variable from main scope has it.
+            future_df = predict_future(model, scaler, btc, window, days=forecast_days)
+
+            st.success("Prediction complete!")
+
+            # Plot
+            fig_future = go.Figure()
+            # Historical (last 90 days for context)
+            fig_future.add_trace(
+                go.Scatter(
+                    x=btc.index[-90:],
+                    y=btc["Close"].iloc[-90:],
+                    mode="lines",
+                    name="Historical (Last 90 days)",
+                    line=dict(color="gray"),
+                )
+            )
+            # Future
+            fig_future.add_trace(
+                go.Scatter(
+                    x=future_df.index,
+                    y=future_df["Close"],
+                    mode="lines",
+                    name="Forecast",
+                    line=dict(color="blue", dash="dash"),
+                )
+            )
+            fig_future.update_layout(
+                title=f"Bitcoin Price Forecast ({forecast_days} days)",
+                xaxis_title="Date",
+                yaxis_title="Price (USD)",
+                template="plotly_white",
+            )
+            st.plotly_chart(fig_future, width="stretch")
 
 
 if __name__ == "__main__":
