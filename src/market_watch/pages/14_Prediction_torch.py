@@ -32,7 +32,7 @@ def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def calculate_technical_indicators(df, window: int = 20):
+def calculate_technical_indicators(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
     """Calculate technical indicators without lookahead bias"""
     df = df.copy()
 
@@ -78,7 +78,7 @@ def calculate_technical_indicators(df, window: int = 20):
     return df
 
 
-def create_stationary_features(df):
+def create_stationary_features(df: pd.DataFrame) -> pd.DataFrame:
     """Create stationary features for better model performance"""
     df = df.copy()
 
@@ -115,8 +115,20 @@ def create_sequences(dataset: np.ndarray, window: int) -> tuple[np.ndarray, np.n
 
 
 def prepare_data_with_validation(
-    data: np.ndarray, window: int = 30, test_size: float = 0.15, val_size: float = 0.15
-):
+    data: np.ndarray,
+    window: int = 30,
+    test_size: float = 0.15,
+    val_size: float = 0.15,
+) -> tuple[
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    MinMaxScaler,
+    int,
+]:
     """Time-series aware split with validation set"""
     n = len(data)
     test_start = int(n * (1 - test_size))
@@ -191,40 +203,37 @@ class ImprovedLSTMModel(nn.Module):
         return out
 
 
-def improved_train_model(
-    btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
-):
-    # Ensure we have the required columns
-    required_columns = ["Open", "High", "Low", "Close", "Volume", "fng_value"]
-    missing_columns = [col for col in required_columns if col not in btc.columns]
-    if missing_columns:
-        raise ValueError(f"Missing required columns: {missing_columns}")
+def train_one_epoch(
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    criterion: nn.Module,
+    x_train: torch.Tensor,
+    y_train: torch.Tensor,
+) -> float:
+    model.train()
+    optimizer.zero_grad()
+    outputs = model(x_train)
+    loss = criterion(outputs, y_train.unsqueeze(1))
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    optimizer.step()
+    return loss.item()
 
-    # Calculate technical indicators
-    try:
-        btc_tech = calculate_technical_indicators(btc)
-    except Exception as e:
-        st.warning(
-            f"Technical indicators calculation failed: {e}. Using basic features."
-        )
-        btc_tech = btc.copy()
 
-    # Create stationary features
-    try:
-        btc_stationary = create_stationary_features(btc_tech)
-    except Exception as e:
-        st.warning(f"Stationary features creation failed: {e}. Using basic features.")
-        btc_stationary = btc_tech.copy()
-        # Add basic features manually
-        btc_stationary["Log_Return"] = np.log(
-            btc_stationary["Close"] / btc_stationary["Close"].shift(1)
-        )
-        btc_stationary["Price_Change"] = btc_stationary["Close"].pct_change()
-        btc_stationary["Volume_Ratio"] = (
-            btc_stationary["Volume"] / btc_stationary["Volume"].rolling(20).mean()
-        )
-        btc_stationary = btc_stationary.dropna()
+def validate_one_epoch(
+    model: nn.Module,
+    criterion: nn.Module,
+    x_val: torch.Tensor,
+    y_val: torch.Tensor,
+) -> float:
+    model.eval()
+    with torch.no_grad():
+        outputs = model(x_val)
+        loss = criterion(outputs, y_val.unsqueeze(1))
+    return loss.item()
 
+
+def select_features(btc_stationary: pd.DataFrame) -> list[str]:
     # Select final features - using only available columns
     possible_features = [
         "Log_Return",
@@ -256,7 +265,8 @@ def improved_train_model(
         available_cols.append("fng_value")
 
     # Ensure we have at least 3 features
-    if len(available_cols) < 3:
+    min_features = 3
+    if len(available_cols) < min_features:
         # Add some basic features
         if "Price_Change" not in available_cols:
             btc_stationary["Price_Change"] = btc_stationary["Close"].pct_change()
@@ -267,11 +277,67 @@ def improved_train_model(
             )
             available_cols.append("Volume_Ratio")
 
+    return available_cols
+
+
+def improved_train_model(
+    btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
+) -> tuple[
+    ImprovedLSTMModel,
+    MinMaxScaler,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    torch.FloatTensor,
+    np.ndarray,
+    float,
+    float,
+    pd.DataFrame,
+    np.ndarray,
+    float,
+    float,
+    int,
+    list[float],
+    list[float],
+    list[str],
+]:
+    # Ensure we have the required columns
+    required_columns = ["Open", "High", "Low", "Close", "Volume", "fng_value"]
+    missing_columns = [col for col in required_columns if col not in btc.columns]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
+
+    # Calculate technical indicators
+    try:
+        btc_tech = calculate_technical_indicators(btc)
+    except Exception as e:
+        st.warning(
+            f"Technical indicators calculation failed: {e}. Using basic features."
+        )
+        btc_tech = btc.copy()
+
+    # Create stationary features
+    try:
+        btc_stationary = create_stationary_features(btc_tech)
+    except Exception as e:
+        st.warning(f"Stationary features creation failed: {e}. Using basic features.")
+        btc_stationary = btc_tech.copy()
+        # Add basic features manually
+        btc_stationary["Log_Return"] = np.log(
+            btc_stationary["Close"] / btc_stationary["Close"].shift(1)
+        )
+        btc_stationary["Price_Change"] = btc_stationary["Close"].pct_change()
+        btc_stationary["Volume_Ratio"] = (
+            btc_stationary["Volume"] / btc_stationary["Volume"].rolling(20).mean()
+        )
+        btc_stationary = btc_stationary.dropna()
+
+    available_cols = select_features(btc_stationary)
     print(f"Using features: {available_cols}")
 
     # Handle NaN values
     btc_stationary = (
-        btc_stationary[available_cols + ["Close"]].fillna(method="ffill").fillna(0)
+        btc_stationary[[*available_cols, "Close"]].fillna(method="ffill").fillna(0)  # type: ignore
     )
     features = btc_stationary[available_cols].values
 
@@ -301,23 +367,11 @@ def improved_train_model(
     val_losses = []
 
     for epoch in range(epochs):
-        # Training
-        model.train()
-        optimizer.zero_grad()
-        train_outputs = model(x_train)
-        train_loss = criterion(train_outputs, y_train.unsqueeze(1))
-        train_loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        optimizer.step()
+        train_loss = train_one_epoch(model, optimizer, criterion, x_train, y_train)
+        val_loss = validate_one_epoch(model, criterion, x_val, y_val)
 
-        # Validation
-        model.eval()
-        with torch.no_grad():
-            val_outputs = model(x_val)
-            val_loss = criterion(val_outputs, y_val.unsqueeze(1))
-
-        train_losses.append(train_loss.item())
-        val_losses.append(val_loss.item())
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
 
         scheduler.step(val_loss)
 
@@ -337,7 +391,7 @@ def improved_train_model(
 
         if epoch % 10 == 0:
             print(
-                f"Epoch {epoch}: Train Loss: {train_loss.item():.6f}, Val Loss: {val_loss.item():.6f}"
+                f"Epoch {epoch}: Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}"
             )
 
     # Load best model
@@ -382,8 +436,8 @@ def improved_train_model(
         scaler,
         x_train,
         y_train,
-        x_test,
-        y_test,
+        x_val,
+        y_val,
         pred_prices,
         rmse,
         mape,
@@ -454,16 +508,18 @@ def backtest(
         return 0.0, 0.0
 
 
-def mean_reverting_future_prediction(
+def robust_future_prediction(
     model: ImprovedLSTMModel,
     scaler: MinMaxScaler,
     btc_data: pd.DataFrame,
     window: int,
-    feature_cols: list,
+    feature_cols: list[str],
     days: int = 60,
 ) -> pd.DataFrame:
-    """Future prediction with strong mean reversion to prevent explosion"""
-
+    """
+    Future prediction with dampened model output to prevent explosion.
+    Uses the model's predicted log returns but applies a decay factor over time.
+    """
     current_price = btc_data["Close"].iloc[-1]
     future_predictions = []
     future_dates = []
@@ -472,126 +528,116 @@ def mean_reverting_future_prediction(
 
     # Calculate historical statistics for realistic bounds
     returns = btc_data["Close"].pct_change().dropna()
-    annual_volatility = returns.std() * np.sqrt(365)
     daily_volatility = returns.std()
 
-    st.write(f"Historical annual volatility: {annual_volatility*100:.1f}%")
-    st.write(f"Historical daily volatility: {daily_volatility*100:.2f}%")
+    st.write(f"Historical daily volatility: {daily_volatility * 100:.2f}%")
 
-    # Use a simple random walk with drift and strong mean reversion
-    current_prediction = current_price
+    # Start with the last window of data
+    # We need to reconstruct the feature matrix for the last window
+    # logic similar to improved_train_model but just for the last window
+    try:
+        # We'll reuse the logic from improved_train_model to get the last window's features
+        # But since we don't have a clean way to call it, we'll approximate.
+        # Ideally, we should have a 'get_features' function.
+        # For now, we'll use the passed feature_cols and assume we can construct them.
+        # Actually, passing the last known feature vector is safer.
+        # But we need to update it.
 
-    for day in range(days):
-        try:
-            # Create synthetic features for the model
-            # We'll use the current prediction trend but heavily constrained
-            features = {}
+        # Simplified approach:
+        # 1. Get last known features from the dataframe used in training (if possible)
+        #    But we only have btc_data (raw).
+        #    We need to re-calculate features for btc_data.
+        btc_tech = calculate_technical_indicators(btc_data)
+        btc_stationary = create_stationary_features(btc_tech)
 
-            # Use very conservative synthetic returns
-            synthetic_return = np.random.normal(
-                0, daily_volatility * 0.5
-            )  # Half of historical volatility
+        # Ensure we have all needed columns
+        for col in feature_cols:
+            if col not in btc_stationary.columns:
+                btc_stationary[col] = 0.0  # Fallback
 
-            features["Log_Return"] = synthetic_return
-            features["Price_Change"] = synthetic_return
+        # Get the last window of features
+        last_features = btc_stationary[feature_cols].tail(window).values
 
-            # Conservative momentum
-            for lookback in [5, 10]:
-                features[f"Momentum_{lookback}"] = synthetic_return * lookback / 10
+        if len(last_features) < window:
+            raise ValueError("Not enough history for prediction window")
 
-            # Neutral volume and F&G
-            features["Volume_Ratio"] = 1.0
-            features["fng_value"] = 0.5  # Neutral
+        current_features = last_features.copy()
+        current_prediction = current_price
 
-            # Fill missing features
-            for col in feature_cols:
-                if col not in features:
-                    features[col] = 0.0
+        for day in range(days):
+            # Scale
+            scaled_features = scaler.transform(current_features)
 
-            # Create feature matrix
-            feature_vector = [features[col] for col in feature_cols]
-            feature_matrix = [feature_vector] * window
-            feature_array = np.array(feature_matrix)
-
-            # Scale and predict
-            scaled_features = scaler.transform(feature_array)
-
+            # Predict
             with torch.no_grad():
                 model.eval()
                 pred_scaled = model(torch.FloatTensor(scaled_features).unsqueeze(0))
 
-            # HEAVILY CONSTRAINED prediction interpretation
-            ret_scale = scaler.scale_[0]
-            ret_min = scaler.min_[0]
-            raw_pred = pred_scaled.item()
+            # Inverse scale
+            # Log_Ret is always index 0 in our scaler logic?
+            # Wait, scaler was fitted on 'available_cols'.
+            # We need to know which index is 'Log_Return'.
+            try:
+                log_ret_idx = feature_cols.index("Log_Return")
+            except ValueError:
+                log_ret_idx = 0  # Fallback assumption
 
-            # Ultra-tight bounds on the prediction
-            clipped_pred = np.clip(raw_pred, -0.5, 0.5)
-            model_return = clipped_pred * ret_scale + ret_min
+            ret_scale = scaler.scale_[log_ret_idx]
+            ret_min = scaler.min_[log_ret_idx]
 
-            # Apply STRONG mean reversion - pull toward current price
-            mean_reversion_factor = 0.3  # 30% pull toward current price
-            effective_return = (
-                model_return * (1 - mean_reversion_factor)
-                + synthetic_return * mean_reversion_factor
-            )
+            raw_pred_log_ret = (pred_scaled.item() - ret_min) / ret_scale
 
-            # Apply volatility scaling
-            scaled_return = (
-                effective_return * daily_volatility * 2
-            )  # Scale to historical volatility
+            # Apply DAMPENING
+            # As we go further into the future, we trust the model less.
+            # Decay factor: 0.95^day
+            decay = 0.95**day
+            dampened_log_ret = raw_pred_log_ret * decay
 
-            # EXTREME bounds on daily changes
-            max_daily_return = 0.02  # 2% maximum daily change
-            scaled_return = np.clip(scaled_return, -max_daily_return, max_daily_return)
+            # Apply volatility constraint
+            # Clip to +/- 2 standard deviations of history
+            max_move = daily_volatility * 2
+            dampened_log_ret = np.clip(dampened_log_ret, -max_move, max_move)
 
             # Calculate new price
-            new_price = current_prediction * (1 + scaled_return)
+            new_price = current_prediction * np.exp(dampened_log_ret)
 
-            # Additional mean reversion toward the original price
-            long_term_mean_reversion = 0.05  # 5% pull toward original price per day
-            new_price = (
-                new_price * (1 - long_term_mean_reversion)
-                + current_price * long_term_mean_reversion
-            )
+            # Hard bounds (sanity check)
+            new_price = max(new_price, current_price * 0.5)
+            new_price = min(new_price, current_price * 2.0)
 
-            # Final bounds
-            new_price = max(
-                new_price, current_price * 0.3
-            )  # Never drop below 30% of current
-            new_price = min(new_price, current_price * 3.0)  # Never triple
-
-            # Store prediction
             future_predictions.append(new_price)
             future_dates.append(btc_data.index[-1] + pd.Timedelta(days=day + 1))
+
+            # Update state for next step
             current_prediction = new_price
+
+            # Update features (Simplified autoregression)
+            # Shift window
+            new_row = current_features[-1].copy()
+
+            # Update Log_Return in the new row
+            new_row[log_ret_idx] = dampened_log_ret
+
+            # Update other features if possible (e.g. Price_Change)
+            if "Price_Change" in feature_cols:
+                idx = feature_cols.index("Price_Change")
+                new_row[idx] = np.exp(dampened_log_ret) - 1
+
+            # Append new row and drop first
+            current_features = np.vstack([current_features[1:], new_row])
 
             if day % 10 == 0:
                 progress_bar.progress((day + 1) / days)
 
-        except Exception as e:
-            st.error(f"Error in future prediction day {day}: {e}")
-            # Fallback: very slight random walk
-            drift = np.random.normal(0, daily_volatility * 0.1)
-            new_price = current_prediction * (1 + drift)
-            new_price = np.clip(new_price, current_price * 0.5, current_price * 2.0)
-
-            future_predictions.append(new_price)
-            future_dates.append(btc_data.index[-1] + pd.Timedelta(days=day + 1))
-            current_prediction = new_price
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
+        return pd.DataFrame()
 
     progress_bar.empty()
 
     result_df = pd.DataFrame(
         {"Date": future_dates, "Predicted_Close": future_predictions}
     ).set_index("Date")
-
-    # Final sanity check on the entire series
-    max_reasonable = current_price * 10  # Never more than 10x current price
-    min_reasonable = current_price * 0.1  # Never less than 10% of current price
-    result_df["Predicted_Close"] = result_df["Predicted_Close"].clip(
-        lower=min_reasonable, upper=max_reasonable
-    )
 
     return result_df
 
@@ -760,7 +806,7 @@ def main() -> None:
                 y=inverted_y_test,
                 mode="lines",
                 name="Actual",
-                line=dict(color="blue"),
+                line={"color": "blue"},
             )
         )
         fig_pred.add_trace(
@@ -769,7 +815,7 @@ def main() -> None:
                 y=inverted_y_pred,
                 mode="lines",
                 name="Predicted",
-                line=dict(color="red", dash="dash"),
+                line={"color": "red", "dash": "dash"},
             )
         )
         fig_pred.update_layout(
@@ -803,10 +849,13 @@ def main() -> None:
 
     forecast_days = st.slider("Days to Predict", 30, 365, 60)
 
+    # Feature selection for future prediction (optional, but good for transparency)
+    # We use the same features as training.
+
     if st.button("Predict Future"):
         with st.spinner(f"Generating {forecast_days} days of predictions..."):
             try:
-                future_df = mean_reverting_future_prediction(
+                future_df = robust_future_prediction(
                     model, scaler, btc, window, feature_cols, days=forecast_days
                 )
 
@@ -821,7 +870,7 @@ def main() -> None:
                         y=btc["Close"].iloc[-90:],
                         mode="lines",
                         name="Historical (Last 90 days)",
-                        line=dict(color="gray"),
+                        line={"color": "gray"},
                     )
                 )
                 # Future
