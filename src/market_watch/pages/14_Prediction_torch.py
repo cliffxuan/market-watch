@@ -280,6 +280,7 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
     return available_cols
 
 
+@st.cache_resource
 def improved_train_model(
     btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
 ) -> tuple[
@@ -642,6 +643,7 @@ def robust_future_prediction(
     return result_df
 
 
+@st.cache_data(ttl="1h")
 def load_data(period: str = "10y") -> pd.DataFrame:
     btc = yf.Ticker("BTC-USD").history(period=period)
     if btc.empty:
