@@ -102,15 +102,34 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
         volume="Volume",
         fillna=True,
     )
-    features_df = features_df[
-        ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
-    ].dropna()
+    # Feature Engineering for Stationarity
+    # 1. Log Return (Target)
+    features_df["Log_Ret"] = np.log(
+        features_df["Close"] / features_df["Close"].shift(1)
+    )
 
-    # Log-transform price-related features to ensure positive predictions and stability
-    features_df["Close"] = np.log(features_df["Close"])
-    features_df["trend_sma_fast"] = np.log(features_df["trend_sma_fast"])
+    # 2. Distance from SMA (Stationary proxy for trend)
+    # Log difference between Close and SMA
+    features_df["dist_sma_fast"] = np.log(
+        features_df["Close"] / features_df["trend_sma_fast"]
+    )
 
-    features = features_df.values
+    # Drop NaNs created by shift/TA but keep all columns for now
+    features_df = features_df.dropna()
+
+    # Select features for training
+    feature_cols = [
+        "Log_Ret",
+        "dist_sma_fast",
+        "momentum_rsi",
+        "volume_obv",
+        "fng_value",
+    ]
+
+    print(f"DEBUG: Features DF Head:\n{features_df[feature_cols].head()}")
+    print(f"DEBUG: Features DF Describe:\n{features_df[feature_cols].describe()}")
+
+    features = features_df[feature_cols].values
     if len(features) < window + 1:
         raise ValueError(f"❌ Not enough data (need at least {window + 1} rows).")
     x_train, y_train, x_test, y_test, scaler, scaled_data, split = prepare_data(
@@ -128,30 +147,43 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
         loss.backward()
         optimizer.step()
 
-    # Evaluate on original scale
+    # Evaluate
     model.eval()
     with torch.no_grad():
         y_pred_test = model(x_test).numpy().flatten()
         y_test_np = y_test.numpy()
-        # Inverse scale using Close's params (feature 0)
-        # Inverse scale using Close's params (feature 0)
-        close_scale = scaler.scale_[0]
-        close_min = scaler.min_[0]
 
-        # Inverse transform to get Log Prices
-        inverted_y_test_log = (y_test_np - close_min) / close_scale
-        inverted_y_pred_log = (y_pred_test - close_min) / close_scale
+        # Inverse scale to get predicted Log Returns
+        # scaler column 0 is Log_Ret
+        ret_scale = scaler.scale_[0]
+        ret_min = scaler.min_[0]
 
-        # Convert Log Prices back to Real Prices
-        inverted_y_test = np.exp(inverted_y_test_log)
-        inverted_y_pred = np.exp(inverted_y_pred_log)
+        pred_log_ret = (y_pred_test - ret_min) / ret_scale
+        actual_log_ret = (y_test_np - ret_min) / ret_scale
 
-        rmse = np.sqrt(mean_squared_error(inverted_y_test, inverted_y_pred))
-        mape = (
-            mean_absolute_percentage_error(inverted_y_test, inverted_y_pred) * 100
-            if np.all(inverted_y_test != 0)
-            else np.nan
-        )
+        # Reconstruct Prices
+        # We need the Close price just before the test predictions start
+        # Test set starts at index: split + window
+        # Reconstruct Prices using One-Step-Ahead Prediction
+        # Price_t = Actual_Price_{t-1} * exp(Pred_Log_Ret_t)
+        # This aligns predictions with the actual price level at each step.
+
+        # Get actual Close prices from features_df
+        # The test set corresponds to features_df indices [split + window : ]
+        start_idx = split + window
+
+        # Actual prices for the test set
+        actual_prices = features_df["Close"].values[start_idx:]
+
+        # Previous actual prices (shifted by 1)
+        # We need prices from [start_idx - 1] to [end - 1]
+        prev_actual_prices = features_df["Close"].values[start_idx - 1 : -1]
+
+        # Predicted Prices (One-Step-Ahead)
+        pred_prices = prev_actual_prices * np.exp(pred_log_ret)
+
+        rmse = np.sqrt(mean_squared_error(actual_prices, pred_prices))
+        mape = mean_absolute_percentage_error(actual_prices, pred_prices) * 100
 
     return (
         model,
@@ -160,13 +192,13 @@ def train_model(btc, window=30, epochs=50, lr=0.001):
         y_train,
         x_test,
         y_test,
-        inverted_y_pred,
+        pred_prices,  # Return reconstructed prices
         rmse,
         mape,
         features_df,
-        inverted_y_test,
-        close_scale,
-        close_min,
+        actual_prices,  # Return reconstructed actuals
+        ret_scale,
+        ret_min,
         split,
         scaled_data,
     )
@@ -239,9 +271,23 @@ def predict_future(model, scaler, btc_data, window, days=365):
             ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
         ].fillna(0)
 
-        # Log-transform price features for the model
-        features_df["Close"] = np.log(features_df["Close"])
-        features_df["trend_sma_fast"] = np.log(features_df["trend_sma_fast"])
+        # Feature Engineering for Stationarity (Same as training)
+        # We need the previous row to calculate Log_Ret for the current last row?
+        # Actually, we just need to construct the features for the *last window*.
+        # The 'Close' column in features_df is raw price.
+
+        # Calculate Log_Ret and dist_sma_fast
+        features_df["Log_Ret"] = np.log(
+            features_df["Close"] / features_df["Close"].shift(1)
+        )
+        features_df["dist_sma_fast"] = np.log(
+            features_df["Close"] / features_df["trend_sma_fast"]
+        )
+
+        # Drop NaNs created by shift/TA
+        features_df = features_df[
+            ["Log_Ret", "dist_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
+        ].dropna()
 
         # Get last window
         last_features = features_df.tail(window).values
@@ -254,13 +300,15 @@ def predict_future(model, scaler, btc_data, window, days=365):
             model.eval()
             pred_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
 
-        # Inverse scale (Column 0 is Close)
-        # pred_scaled is [1, 1]
+        # Inverse scale (Column 0 is Log_Ret)
         pred_val_scaled = pred_scaled.item()
 
-        # scaler.scale_[0] and scaler.min_[0] are for the first column (Close)
-        pred_price_log = (pred_val_scaled - scaler.min_[0]) / scaler.scale_[0]
-        pred_price = np.exp(pred_price_log)
+        pred_log_ret = (pred_val_scaled - scaler.min_[0]) / scaler.scale_[0]
+
+        # Calculate New Price
+        # New_Price = Last_Price * exp(pred_log_ret)
+        last_price = future_btc["Close"].iloc[-1]
+        pred_price = last_price * np.exp(pred_log_ret)
 
         # Append new row
         last_date = future_btc.index[-1]
@@ -371,8 +419,8 @@ def main():
             mape,
             features_df,
             inverted_y_test,
-            close_scale,
-            close_min,
+            ret_scale,
+            ret_min,
             split,
             scaled_data,
         ) = train_model(btc, window, epochs)
@@ -386,11 +434,23 @@ def main():
     col2.metric("Test MAPE", f"{mape:.2f}%")
 
     # Predict next day
-    last_features = features_df.tail(window).values
+    feature_cols = [
+        "Log_Ret",
+        "dist_sma_fast",
+        "momentum_rsi",
+        "volume_obv",
+        "fng_value",
+    ]
+    last_features = features_df[feature_cols].tail(window).values
     scaled_last = scaler.transform(last_features)
     predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
-    predicted_log_price = (predicted_scaled.item() - close_min) / close_scale
-    predicted_price = np.exp(predicted_log_price)
+
+    # Inverse scale Log Return
+    pred_log_ret = (predicted_scaled.item() - ret_min) / ret_scale
+
+    # Apply to last known price
+    last_known_price = btc["Close"].iloc[-1]
+    predicted_price = last_known_price * np.exp(pred_log_ret)
 
     st.subheader("Next Day BTC Price Prediction")
     col1, col2 = st.columns(2)
@@ -402,6 +462,7 @@ def main():
 
     # Plot actual vs predicted
     test_dates = features_df.index[split + window :]
+
     fig_pred = go.Figure()
     fig_pred.add_trace(
         go.Scatter(
