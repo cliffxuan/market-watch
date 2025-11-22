@@ -26,7 +26,7 @@ def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
         df["fng_value"] = df["value"].astype(int)
         df = df.set_index("timestamp").sort_index()
-        return df[["fng_value"]]
+        return pd.DataFrame(df["fng_value"])
     except Exception as e:
         st.warning(f"Could not fetch historical Fear & Greed Index: {e}")
         return pd.DataFrame()
@@ -281,7 +281,7 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
 
 
 @st.cache_resource
-def improved_train_model(
+def improved_train_model(   # noqa: C901
     btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
 ) -> tuple[
     ImprovedLSTMModel,
@@ -340,14 +340,14 @@ def improved_train_model(
     btc_stationary = (
         btc_stationary[[*available_cols, "Close"]].fillna(method="ffill").fillna(0)  # type: ignore
     )
-    features = btc_stationary[available_cols].values
+    features = btc_stationary[available_cols].to_numpy()
 
     if len(features) < window + 1:
         raise ValueError(f"❌ Not enough data (need at least {window + 1} rows).")
 
     # Prepare data with proper time series split
     x_train, y_train, x_val, y_val, x_test, y_test, scaler, test_start = (
-        prepare_data_with_validation(features, window)
+        prepare_data_with_validation(features.astype(np.float32), window)
     )
 
     model = ImprovedLSTMModel(input_size=len(available_cols))
@@ -537,7 +537,8 @@ def robust_future_prediction(
     # We need to reconstruct the feature matrix for the last window
     # logic similar to improved_train_model but just for the last window
     try:
-        # We'll reuse the logic from improved_train_model to get the last window's features
+        # We'll reuse the logic from improved_train_model to get the last window's
+        # features. But since we don't have a clean way to call it, we'll approximate.
         # But since we don't have a clean way to call it, we'll approximate.
         # Ideally, we should have a 'get_features' function.
         # For now, we'll use the passed feature_cols and assume we can construct them.
@@ -625,7 +626,10 @@ def robust_future_prediction(
                 new_row[idx] = np.exp(dampened_log_ret) - 1
 
             # Append new row and drop first
-            current_features = np.vstack([current_features[1:], new_row])
+            # Append new row and drop first
+            current_features = np.vstack(
+                [current_features[1:], new_row.astype(np.float32)]
+            )
 
             if day % 10 == 0:
                 progress_bar.progress((day + 1) / days)
@@ -687,8 +691,8 @@ def main() -> None:
     # Display data info
     st.subheader("Data Overview")
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Start Date", btc.index[0].strftime("%Y-%m-%d"))
-    col2.metric("End Date", btc.index[-1].strftime("%Y-%m-%d"))
+    col1.metric("Start Date", pd.to_datetime(btc.index[0]).strftime("%Y-%m-%d"))
+    col2.metric("End Date", pd.to_datetime(btc.index[-1]).strftime("%Y-%m-%d"))
     col3.metric("Current Price", f"${btc['Close'].iloc[-1]:.2f}")
     col4.metric("F&G Index", f"{btc['fng_value'].iloc[-1]}")
 
@@ -727,7 +731,7 @@ def main() -> None:
                 _,
                 _,
                 _,
-                y_test,
+                _,
                 inverted_y_pred,
                 rmse,
                 mape,
