@@ -32,9 +32,7 @@ def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def calculate_technical_indicators(
-    df: pd.DataFrame, window: int = 20
-) -> pd.DataFrame:
+def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate technical indicators ensuring no look-ahead bias.
     All calculations use only past data.
@@ -83,31 +81,35 @@ def calculate_technical_indicators(
 
 
 def create_stationary_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Create stationary features for better model performance"""
+    """
+    Create stationary features ensuring no data leakage.
+    Returns (percentage change) are naturally backward-looking.
+    """
     df = df.copy()
 
-    # Ensure Close column exists
-    if "Close" not in df.columns:
-        raise ValueError("'Close' column not found in DataFrame")
-
-    # Price-based features (stationary)
-    df["Price_Change"] = df["Close"].pct_change()
+    # Returns (these naturally use past prices)
     df["Log_Return"] = np.log(df["Close"] / df["Close"].shift(1))
+    df["Price_Change"] = df["Close"].pct_change()
 
-    # Volatility features
-    df["Volatility"] = df["Log_Return"].rolling(window=20).std()
+    # Volatility (rolling standard deviation of returns)
+    df["Volatility"] = df["Log_Return"].rolling(window=20, min_periods=20).std()
 
-    # Momentum features
-    df["Momentum_5"] = df["Close"] / df["Close"].shift(5) - 1
-    df["Momentum_10"] = df["Close"] / df["Close"].shift(10) - 1
+    # Momentum (comparing current to past prices)
+    df["Momentum_5"] = df["Close"].pct_change(periods=5)
+    df["Momentum_10"] = df["Close"].pct_change(periods=10)
 
-    # Price distance from moving averages
+    # Distance from moving averages
     if "SMA_20" in df.columns:
-        df["Dist_SMA_20"] = (df["Close"] - df["SMA_20"]) / df["SMA_20"]
+        df["Dist_SMA_20"] = (df["Close"] - df["SMA_20"]) / df["SMA_20"].replace(
+            0, np.nan
+        )
     if "EMA_20" in df.columns:
-        df["Dist_EMA_20"] = (df["Close"] - df["EMA_20"]) / df["EMA_20"]
+        df["Dist_EMA_20"] = (df["Close"] - df["EMA_20"]) / df["EMA_20"].replace(
+            0, np.nan
+        )
 
-    return df.dropna()
+    # Drop first row (NaN from pct_change)
+    return df.iloc[1:].copy()
 
 
 def create_sequences(dataset: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray]:
@@ -314,7 +316,7 @@ def improved_train_model(  # noqa: C901
 
     # Calculate technical indicators
     try:
-        btc_tech = calculate_technical_indicators(btc, window=window)
+        btc_tech = calculate_technical_indicators(btc)
     except Exception as e:
         st.warning(
             f"Technical indicators calculation failed: {e}. Using basic features."
@@ -553,7 +555,7 @@ def robust_future_prediction(
         # 1. Get last known features from the dataframe used in training (if possible)
         #    But we only have btc_data (raw).
         #    We need to re-calculate features for btc_data.
-        btc_tech = calculate_technical_indicators(btc_data, window)
+        btc_tech = calculate_technical_indicators(btc_data)
         btc_stationary = create_stationary_features(btc_tech)
 
         # Ensure we have all needed columns
