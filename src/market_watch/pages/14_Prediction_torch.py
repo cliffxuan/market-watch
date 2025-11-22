@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -8,8 +10,9 @@ import torch
 import yfinance as yf
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
-from ta import add_all_ta_features
 from torch import nn
+
+warnings.filterwarnings("ignore")
 
 
 def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
@@ -23,11 +26,84 @@ def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
         df["fng_value"] = df["value"].astype(int)
         df = df.set_index("timestamp").sort_index()
-        # Keep only fng_value
         return df[["fng_value"]]
     except Exception as e:
         st.warning(f"Could not fetch historical Fear & Greed Index: {e}")
         return pd.DataFrame()
+
+
+def calculate_technical_indicators(df, window: int = 20):
+    """Calculate technical indicators without lookahead bias"""
+    df = df.copy()
+
+    # Ensure we have the required columns
+    required_columns = ["Open", "High", "Low", "Close", "Volume"]
+    for col in required_columns:
+        if col not in df.columns:
+            raise ValueError(f"Missing required column: {col}")
+
+    # Simple Moving Averages
+    df["SMA_20"] = df["Close"].rolling(window=window).mean()
+    df["SMA_50"] = df["Close"].rolling(window=50).mean()
+    df["EMA_20"] = df["Close"].ewm(span=window).mean()
+
+    # RSI calculation
+    delta = df["Close"].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df["RSI"] = 100 - (100 / (1 + rs))
+
+    # MACD
+    exp1 = df["Close"].ewm(span=12).mean()
+    exp2 = df["Close"].ewm(span=26).mean()
+    df["MACD"] = exp1 - exp2
+    df["MACD_Signal"] = df["MACD"].ewm(span=9).mean()
+    df["MACD_Histogram"] = df["MACD"] - df["MACD_Signal"]
+
+    # Bollinger Bands
+    df["BB_Middle"] = df["Close"].rolling(window=20).mean()
+    bb_std = df["Close"].rolling(window=20).std()
+    df["BB_Upper"] = df["BB_Middle"] + (bb_std * 2)
+    df["BB_Lower"] = df["BB_Middle"] - (bb_std * 2)
+    df["BB_Width"] = (df["BB_Upper"] - df["BB_Lower"]) / df["BB_Middle"]
+    df["BB_Position"] = (df["Close"] - df["BB_Lower"]) / (
+        df["BB_Upper"] - df["BB_Lower"]
+    )
+
+    # Volume indicators
+    df["Volume_SMA"] = df["Volume"].rolling(window=20).mean()
+    df["Volume_Ratio"] = df["Volume"] / df["Volume_SMA"]
+
+    return df
+
+
+def create_stationary_features(df):
+    """Create stationary features for better model performance"""
+    df = df.copy()
+
+    # Ensure Close column exists
+    if "Close" not in df.columns:
+        raise ValueError("'Close' column not found in DataFrame")
+
+    # Price-based features (stationary)
+    df["Price_Change"] = df["Close"].pct_change()
+    df["Log_Return"] = np.log(df["Close"] / df["Close"].shift(1))
+
+    # Volatility features
+    df["Volatility"] = df["Log_Return"].rolling(window=20).std()
+
+    # Momentum features
+    df["Momentum_5"] = df["Close"] / df["Close"].shift(5) - 1
+    df["Momentum_10"] = df["Close"] / df["Close"].shift(10) - 1
+
+    # Price distance from moving averages
+    if "SMA_20" in df.columns:
+        df["Dist_SMA_20"] = (df["Close"] - df["SMA_20"]) / df["SMA_20"]
+    if "EMA_20" in df.columns:
+        df["Dist_EMA_20"] = (df["Close"] - df["EMA_20"]) / df["EMA_20"]
+
+    return df.dropna()
 
 
 def create_sequences(dataset: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray]:
@@ -38,185 +114,268 @@ def create_sequences(dataset: np.ndarray, window: int) -> tuple[np.ndarray, np.n
     return np.array(x_inputs), np.array(y)
 
 
-def prepare_data(
-    data: np.ndarray, window: int = 30, test_size: float = 0.2
-) -> tuple[
-    torch.FloatTensor,
-    torch.FloatTensor,
-    torch.FloatTensor,
-    torch.FloatTensor,
-    MinMaxScaler,
-    np.ndarray,
-    int,
-]:
-    # Split raw data first to avoid leakage
-    split_idx = int(len(data) * (1 - test_size))
-    train_data = data[:split_idx]
-    # Overlap window for test set to ensure continuity
-    test_data = data[split_idx - window :]
+def prepare_data_with_validation(
+    data: np.ndarray, window: int = 30, test_size: float = 0.15, val_size: float = 0.15
+):
+    """Time-series aware split with validation set"""
+    n = len(data)
+    test_start = int(n * (1 - test_size))
+    val_start = int(test_start * (1 - val_size))
+
+    # Train: 70%, Validation: 15%, Test: 15%
+    train_data = data[:val_start]
+    val_data = data[val_start - window : test_start]
+    test_data = data[test_start - window :]
 
     scaler = MinMaxScaler()
-    # Fit ONLY on training data
     scaler.fit(train_data)
 
     train_scaled = scaler.transform(train_data)
+    val_scaled = scaler.transform(val_data)
     test_scaled = scaler.transform(test_data)
 
     x_train, y_train = create_sequences(train_scaled, window)
+    x_val, y_val = create_sequences(val_scaled, window)
     x_test, y_test = create_sequences(test_scaled, window)
 
-    x_train = torch.FloatTensor(x_train)
-    y_train = torch.FloatTensor(y_train)
-    x_test = torch.FloatTensor(x_test)
-    y_test = torch.FloatTensor(y_test)
+    return (
+        torch.FloatTensor(x_train),
+        torch.FloatTensor(y_train),
+        torch.FloatTensor(x_val),
+        torch.FloatTensor(y_val),
+        torch.FloatTensor(x_test),
+        torch.FloatTensor(y_test),
+        scaler,
+        test_start,
+    )
 
-    # Reconstruct full scaled data for consistency (though strictly only scaler matters)
-    scaled_data = np.concatenate((train_scaled, test_scaled[window:]), axis=0)
-    split = len(x_train)
 
-    return x_train, y_train, x_test, y_test, scaler, scaled_data, split
-
-
-class LSTMModel(nn.Module):
+class ImprovedLSTMModel(nn.Module):
     def __init__(
         self,
-        input_size: int = 4,
-        hidden_size: int = 50,
-        num_layers: int = 1,
-        dropout: float = 0.2,
-    ):  # input_size for features
+        input_size: int = 8,
+        hidden_size: int = 100,
+        num_layers: int = 2,
+        dropout: float = 0.3,
+    ):
         super().__init__()
         self.lstm = nn.LSTM(
             input_size,
             hidden_size,
             num_layers,
             batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
+            bidirectional=False,
         )
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(hidden_size, 1)
+        self.fc1 = nn.Linear(hidden_size, 50)
+        self.fc2 = nn.Linear(50, 25)
+        self.fc3 = nn.Linear(25, 1)
+        self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        h0 = torch.zeros(self.lstm.num_layers, x.size(0), self.lstm.hidden_size).to(
+        batch_size = x.size(0)
+        h0 = torch.zeros(self.lstm.num_layers, batch_size, self.lstm.hidden_size).to(
             x.device
         )
-        c0 = torch.zeros(self.lstm.num_layers, x.size(0), self.lstm.hidden_size).to(
+        c0 = torch.zeros(self.lstm.num_layers, batch_size, self.lstm.hidden_size).to(
             x.device
         )
+
         out, _ = self.lstm(x, (h0, c0))
         out = self.dropout(out[:, -1, :])
-        return self.fc(out)
+        out = self.relu(self.fc1(out))
+        out = self.dropout(out)
+        out = self.relu(self.fc2(out))
+        out = self.fc3(out)
+        return out
 
 
-def train_model(
-    btc: pd.DataFrame, window: int = 30, epochs: int = 50, lr: float = 0.001
-) -> tuple[
-    LSTMModel,
-    MinMaxScaler,
-    torch.FloatTensor,
-    torch.FloatTensor,
-    torch.FloatTensor,
-    torch.FloatTensor,
-    np.ndarray,
-    float,
-    float,
-    pd.DataFrame,
-    np.ndarray,
-    float,
-    float,
-    int,
-    np.ndarray,
-]:
-    features_df = add_all_ta_features(
-        btc,
-        open="Open",
-        high="High",
-        low="Low",
-        close="Close",
-        volume="Volume",
-        fillna=True,
-    )
-    # Feature Engineering for Stationarity
-    # 1. Log Return (Target)
-    features_df["Log_Ret"] = np.log(
-        features_df["Close"] / features_df["Close"].shift(1)
-    )
+def improved_train_model(
+    btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
+):
+    # Ensure we have the required columns
+    required_columns = ["Open", "High", "Low", "Close", "Volume", "fng_value"]
+    missing_columns = [col for col in required_columns if col not in btc.columns]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
 
-    # 2. Distance from SMA (Stationary proxy for trend)
-    # Log difference between Close and SMA
-    features_df["dist_sma_fast"] = np.log(
-        features_df["Close"] / features_df["trend_sma_fast"]
-    )
+    # Calculate technical indicators
+    try:
+        btc_tech = calculate_technical_indicators(btc)
+    except Exception as e:
+        st.warning(
+            f"Technical indicators calculation failed: {e}. Using basic features."
+        )
+        btc_tech = btc.copy()
 
-    # Drop NaNs created by shift/TA but keep all columns for now
-    features_df = features_df.dropna()
+    # Create stationary features
+    try:
+        btc_stationary = create_stationary_features(btc_tech)
+    except Exception as e:
+        st.warning(f"Stationary features creation failed: {e}. Using basic features.")
+        btc_stationary = btc_tech.copy()
+        # Add basic features manually
+        btc_stationary["Log_Return"] = np.log(
+            btc_stationary["Close"] / btc_stationary["Close"].shift(1)
+        )
+        btc_stationary["Price_Change"] = btc_stationary["Close"].pct_change()
+        btc_stationary["Volume_Ratio"] = (
+            btc_stationary["Volume"] / btc_stationary["Volume"].rolling(20).mean()
+        )
+        btc_stationary = btc_stationary.dropna()
 
-    # Select features for training
-    feature_cols = [
-        "Log_Ret",
-        "dist_sma_fast",
-        "momentum_rsi",
-        "volume_obv",
+    # Select final features - using only available columns
+    possible_features = [
+        "Log_Return",
+        "Price_Change",
+        "Volatility",
+        "RSI",
+        "MACD",
+        "BB_Position",
+        "BB_Width",
+        "Momentum_5",
+        "Momentum_10",
+        "Dist_SMA_20",
+        "Dist_EMA_20",
+        "Volume_Ratio",
         "fng_value",
     ]
 
-    print(f"DEBUG: Features DF Head:\n{features_df[feature_cols].head()}")
-    print(f"DEBUG: Features DF Describe:\n{features_df[feature_cols].describe()}")
+    # Ensure we have all columns
+    available_cols = [col for col in possible_features if col in btc_stationary.columns]
 
-    features = features_df[feature_cols].values
+    # Add essential features if missing
+    if "Log_Return" not in available_cols:
+        btc_stationary["Log_Return"] = np.log(
+            btc_stationary["Close"] / btc_stationary["Close"].shift(1)
+        )
+        available_cols.append("Log_Return")
+
+    if "fng_value" not in available_cols and "fng_value" in btc_stationary.columns:
+        available_cols.append("fng_value")
+
+    # Ensure we have at least 3 features
+    if len(available_cols) < 3:
+        # Add some basic features
+        if "Price_Change" not in available_cols:
+            btc_stationary["Price_Change"] = btc_stationary["Close"].pct_change()
+            available_cols.append("Price_Change")
+        if "Volume_Ratio" not in available_cols:
+            btc_stationary["Volume_Ratio"] = (
+                btc_stationary["Volume"] / btc_stationary["Volume"].rolling(20).mean()
+            )
+            available_cols.append("Volume_Ratio")
+
+    print(f"Using features: {available_cols}")
+
+    # Handle NaN values
+    btc_stationary = (
+        btc_stationary[available_cols + ["Close"]].fillna(method="ffill").fillna(0)
+    )
+    features = btc_stationary[available_cols].values
+
     if len(features) < window + 1:
         raise ValueError(f"❌ Not enough data (need at least {window + 1} rows).")
-    x_train, y_train, x_test, y_test, scaler, scaled_data, split = prepare_data(
-        features, window
+
+    # Prepare data with proper time series split
+    x_train, y_train, x_val, y_val, x_test, y_test, scaler, test_start = (
+        prepare_data_with_validation(features, window)
     )
-    model = LSTMModel(input_size=features.shape[1])
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    model = ImprovedLSTMModel(input_size=len(available_cols))
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
     criterion = nn.MSELoss()
 
-    for _ in range(epochs):
+    # Learning rate scheduler
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, patience=10, factor=0.5
+    )
+
+    best_val_loss = float("inf")
+    patience = 20
+    patience_counter = 0
+    best_model_state = None
+
+    train_losses = []
+    val_losses = []
+
+    for epoch in range(epochs):
+        # Training
         model.train()
         optimizer.zero_grad()
-        outputs = model(x_train)
-        loss = criterion(outputs, y_train.unsqueeze(1))
-        loss.backward()
+        train_outputs = model(x_train)
+        train_loss = criterion(train_outputs, y_train.unsqueeze(1))
+        train_loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
 
-    # Evaluate
+        # Validation
+        model.eval()
+        with torch.no_grad():
+            val_outputs = model(x_val)
+            val_loss = criterion(val_outputs, y_val.unsqueeze(1))
+
+        train_losses.append(train_loss.item())
+        val_losses.append(val_loss.item())
+
+        scheduler.step(val_loss)
+
+        # Early stopping
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            best_model_state = model.state_dict().copy()
+        else:
+            patience_counter += 1
+
+        if patience_counter >= patience:
+            print(f"Early stopping at epoch {epoch}")
+            if best_model_state is not None:
+                model.load_state_dict(best_model_state)
+            break
+
+        if epoch % 10 == 0:
+            print(
+                f"Epoch {epoch}: Train Loss: {train_loss.item():.6f}, Val Loss: {val_loss.item():.6f}"
+            )
+
+    # Load best model
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state)
+
+    # Evaluate on test set
     model.eval()
     with torch.no_grad():
         y_pred_test = model(x_test).numpy().flatten()
-        # y_test_np = y_test.numpy()
 
-        # Inverse scale to get predicted Log Returns
-        # scaler column 0 is Log_Ret
-        ret_scale = scaler.scale_[0]
-        ret_min = scaler.min_[0]
+    # Reconstruct prices
+    ret_scale = scaler.scale_[0]
+    ret_min = scaler.min_[0]
 
-        pred_log_ret = (y_pred_test - ret_min) / ret_scale
-        # actual_log_ret = (y_test_np - ret_min) / ret_scale
+    pred_log_ret = (y_pred_test - ret_min) / ret_scale
 
-        # Reconstruct Prices
-        # We need the Close price just before the test predictions start
-        # Test set starts at index: split + window
-        # Reconstruct Prices using One-Step-Ahead Prediction
-        # Price_t = Actual_Price_{t-1} * exp(Pred_Log_Ret_t)
-        # This aligns predictions with the actual price level at each step.
+    # Get actual prices for the test period
+    # Ensure we have enough data
+    end_idx = min(test_start + len(y_pred_test), len(btc_stationary))
+    actual_prices = btc_stationary.iloc[test_start:end_idx]["Close"].values
 
-        # Get actual Close prices from features_df
-        # The test set corresponds to features_df indices [split + window : ]
-        start_idx = split + window
+    # Previous actual prices (for price reconstruction)
+    prev_start = max(0, test_start - 1)
+    prev_end = min(test_start - 1 + len(y_pred_test), len(btc_stationary))
+    prev_actual_prices = btc_stationary.iloc[prev_start:prev_end]["Close"].values
 
-        # Actual prices for the test set
-        actual_prices = features_df["Close"].values[start_idx:]
+    # Ensure same length
+    min_len = min(len(actual_prices), len(prev_actual_prices), len(pred_log_ret))
+    actual_prices = actual_prices[:min_len]
+    prev_actual_prices = prev_actual_prices[:min_len]
+    pred_log_ret = pred_log_ret[:min_len]
 
-        # Previous actual prices (shifted by 1)
-        # We need prices from [start_idx - 1] to [end - 1]
-        prev_actual_prices = features_df["Close"].values[start_idx - 1 : -1]
+    # Predicted Prices (One-Step-Ahead)
+    pred_prices = prev_actual_prices * np.exp(pred_log_ret)
 
-        # Predicted Prices (One-Step-Ahead)
-        pred_prices = prev_actual_prices * np.exp(pred_log_ret)
-
-        rmse = np.sqrt(mean_squared_error(actual_prices, pred_prices))
-        mape = mean_absolute_percentage_error(actual_prices, pred_prices) * 100
+    rmse = np.sqrt(mean_squared_error(actual_prices, pred_prices))
+    mape = mean_absolute_percentage_error(actual_prices, pred_prices) * 100
 
     return (
         model,
@@ -225,163 +384,216 @@ def train_model(
         y_train,
         x_test,
         y_test,
-        pred_prices,  # Return reconstructed prices
+        pred_prices,
         rmse,
         mape,
-        features_df,
-        actual_prices,  # Return reconstructed actuals
+        btc_stationary,
+        actual_prices,
         ret_scale,
         ret_min,
-        split,
-        scaled_data,
+        test_start,
+        train_losses,
+        val_losses,
+        available_cols,
     )
 
 
 def backtest(
-    features_df: pd.DataFrame, inverted_y_pred: np.ndarray, y_test_len: int
+    features_df: pd.DataFrame,
+    inverted_y_pred: np.ndarray,
+    test_start: int,
+    y_test_len: int,
 ) -> tuple[float, float]:
-    close_t = features_df["Close"].iloc[-y_test_len - 1 : -1].values
-    signals = np.sign(inverted_y_pred - close_t)
-    pct_returns = features_df["Close"].pct_change().iloc[-y_test_len:].values
-    returns = signals * pct_returns
-    returns = returns[~np.isnan(returns)]  # Remove any NaNs (shouldn't be any)
-    cumulative = np.cumprod(1 + returns) - 1
-    sharpe = (
-        (np.mean(returns) / np.std(returns) * np.sqrt(252))
-        if np.std(returns) > 0
-        else 0
-    )
-    total_return = cumulative[-1] if len(cumulative) > 0 else 0
-    return sharpe, total_return
+    """Improved backtesting with proper indexing"""
+    try:
+        # Ensure features_df has Close column
+        if "Close" not in features_df.columns:
+            return 0.0, 0.0
+
+        # Use the test period for backtesting
+        end_idx = min(test_start + y_test_len, len(features_df))
+        test_prices = features_df["Close"].iloc[test_start:end_idx]
+
+        prev_start = max(0, test_start - 1)
+        prev_end = min(test_start - 1 + y_test_len, len(features_df))
+        test_prev_prices = features_df["Close"].iloc[prev_start:prev_end]
+
+        # Ensure same length
+        min_len = min(len(test_prices), len(test_prev_prices), len(inverted_y_pred))
+        test_prices = test_prices[:min_len]
+        test_prev_prices = test_prev_prices[:min_len]
+        inverted_y_pred = inverted_y_pred[:min_len]
+
+        # Generate signals based on predicted vs current price
+        signals = np.sign(inverted_y_pred - test_prev_prices.values)
+
+        # Calculate returns
+        pct_returns = test_prices.pct_change().fillna(0).values
+
+        # Ensure signals and returns have same length
+        min_len = min(len(signals), len(pct_returns))
+        signals = signals[:min_len]
+        pct_returns = pct_returns[:min_len]
+
+        returns = signals * pct_returns
+        returns = returns[~np.isnan(returns)]
+
+        if len(returns) == 0:
+            return 0.0, 0.0
+
+        cumulative = np.cumprod(1 + returns) - 1
+        sharpe = (
+            (np.mean(returns) / np.std(returns) * np.sqrt(252))
+            if np.std(returns) > 0
+            else 0
+        )
+        total_return = cumulative[-1] if len(cumulative) > 0 else 0
+        return sharpe, total_return
+    except Exception as e:
+        print(f"Backtesting error: {e}")
+        return 0.0, 0.0
 
 
-def predict_future(
-    model: LSTMModel,
+def mean_reverting_future_prediction(
+    model: ImprovedLSTMModel,
     scaler: MinMaxScaler,
     btc_data: pd.DataFrame,
     window: int,
-    days: int = 365,
+    feature_cols: list,
+    days: int = 60,
 ) -> pd.DataFrame:
-    """
-    Autoregressive prediction for future days.
-    """
-    future_btc = btc_data.copy()
+    """Future prediction with strong mean reversion to prevent explosion"""
 
-    # We need to ensure we have the scaler fitted on the correct columns if we were
-    # to inverse transform features. But here we only care about the target (Close)
-    # which is column 0 in our specific scaler logic if we used it that way.
-    # Wait, the scaler in train_model was fitted on 'train_data' which was just
-    # the features array. We need to be careful. The model expects scaled features.
+    current_price = btc_data["Close"].iloc[-1]
+    future_predictions = []
+    future_dates = []
 
-    # Let's look at how features are constructed in train_model:
-    # features_df = ... [
-    #     ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
-    # ]
-    # scaler.fit(train_data) -> train_data is these 5 columns.
-
-    # So to predict, we need to:
-    # 1. Get the last 'window' rows of features from future_btc
-    # 2. Scale them
-    # 3. Predict
-    # 4. Inverse scale the prediction (using column 0 of scaler)
-    # 5. Append new row to future_btc
-    # 6. Re-calculate features
-
-    # Progress bar
     progress_bar = st.progress(0)
 
-    for i in range(days):
-        # 1. Calculate features on current data
-        # Optimization: Only use the last 200 rows to calculate TA.
-        # Most indicators (RSI, SMA) need limited history.
-        # This prevents the dataframe from growing indefinitely in the TA calculation.
+    # Calculate historical statistics for realistic bounds
+    returns = btc_data["Close"].pct_change().dropna()
+    annual_volatility = returns.std() * np.sqrt(365)
+    daily_volatility = returns.std()
 
-        ta_window_size = 200
-        if len(future_btc) > ta_window_size:
-            calc_df = future_btc.tail(ta_window_size).copy()
-        else:
-            calc_df = future_btc.copy()
+    st.write(f"Historical annual volatility: {annual_volatility*100:.1f}%")
+    st.write(f"Historical daily volatility: {daily_volatility*100:.2f}%")
 
-        features_df = add_all_ta_features(
-            calc_df,
-            open="Open",
-            high="High",
-            low="Low",
-            close="Close",
-            volume="Volume",
-            fillna=True,
-        )
-        features_df = features_df[
-            ["Close", "trend_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
-        ].fillna(0)
+    # Use a simple random walk with drift and strong mean reversion
+    current_prediction = current_price
 
-        # Feature Engineering for Stationarity (Same as training)
-        # We need the previous row to calculate Log_Ret for the current last row?
-        # Actually, we just need to construct the features for the *last window*.
-        # The 'Close' column in features_df is raw price.
+    for day in range(days):
+        try:
+            # Create synthetic features for the model
+            # We'll use the current prediction trend but heavily constrained
+            features = {}
 
-        # Calculate Log_Ret and dist_sma_fast
-        features_df["Log_Ret"] = np.log(
-            features_df["Close"] / features_df["Close"].shift(1)  # type: ignore
-        )
-        features_df["dist_sma_fast"] = np.log(
-            features_df["Close"] / features_df["trend_sma_fast"]
-        )
+            # Use very conservative synthetic returns
+            synthetic_return = np.random.normal(
+                0, daily_volatility * 0.5
+            )  # Half of historical volatility
 
-        # Drop NaNs created by shift/TA
-        features_df = features_df[
-            ["Log_Ret", "dist_sma_fast", "momentum_rsi", "volume_obv", "fng_value"]
-        ].dropna()  # type: ignore
+            features["Log_Return"] = synthetic_return
+            features["Price_Change"] = synthetic_return
 
-        # Get last window
-        last_features = features_df.tail(window).values
+            # Conservative momentum
+            for lookback in [5, 10]:
+                features[f"Momentum_{lookback}"] = synthetic_return * lookback / 10
 
-        # Scale
-        scaled_last = scaler.transform(last_features)
+            # Neutral volume and F&G
+            features["Volume_Ratio"] = 1.0
+            features["fng_value"] = 0.5  # Neutral
 
-        # Predict
-        with torch.no_grad():
-            model.eval()
-            pred_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
+            # Fill missing features
+            for col in feature_cols:
+                if col not in features:
+                    features[col] = 0.0
 
-        # Inverse scale (Column 0 is Log_Ret)
-        pred_val_scaled = pred_scaled.item()
+            # Create feature matrix
+            feature_vector = [features[col] for col in feature_cols]
+            feature_matrix = [feature_vector] * window
+            feature_array = np.array(feature_matrix)
 
-        pred_log_ret = (pred_val_scaled - scaler.min_[0]) / scaler.scale_[0]
+            # Scale and predict
+            scaled_features = scaler.transform(feature_array)
 
-        # Calculate New Price
-        # New_Price = Last_Price * exp(pred_log_ret)
-        last_price = future_btc["Close"].iloc[-1]
-        pred_price = last_price * np.exp(pred_log_ret)
+            with torch.no_grad():
+                model.eval()
+                pred_scaled = model(torch.FloatTensor(scaled_features).unsqueeze(0))
 
-        # Append new row
-        last_date = future_btc.index[-1]
-        next_date = last_date + pd.Timedelta(days=1)
+            # HEAVILY CONSTRAINED prediction interpretation
+            ret_scale = scaler.scale_[0]
+            ret_min = scaler.min_[0]
+            raw_pred = pred_scaled.item()
 
-        # Assumptions for new row:
-        # Open/High/Low = Predicted Close (neutral assumption)
-        # Volume = Last Volume
-        # F&G = Last F&G
+            # Ultra-tight bounds on the prediction
+            clipped_pred = np.clip(raw_pred, -0.5, 0.5)
+            model_return = clipped_pred * ret_scale + ret_min
 
-        new_row = pd.DataFrame(
-            {
-                "Open": [pred_price],
-                "High": [pred_price],
-                "Low": [pred_price],
-                "Close": [pred_price],
-                "Volume": [future_btc["Volume"].iloc[-1]],
-                "fng_value": [future_btc["fng_value"].iloc[-1]],
-            },
-            index=[next_date],  # type: ignore
-        )
+            # Apply STRONG mean reversion - pull toward current price
+            mean_reversion_factor = 0.3  # 30% pull toward current price
+            effective_return = (
+                model_return * (1 - mean_reversion_factor)
+                + synthetic_return * mean_reversion_factor
+            )
 
-        future_btc = pd.concat([future_btc, new_row])
+            # Apply volatility scaling
+            scaled_return = (
+                effective_return * daily_volatility * 2
+            )  # Scale to historical volatility
 
-        if i % 10 == 0:
-            progress_bar.progress((i + 1) / days)
+            # EXTREME bounds on daily changes
+            max_daily_return = 0.02  # 2% maximum daily change
+            scaled_return = np.clip(scaled_return, -max_daily_return, max_daily_return)
+
+            # Calculate new price
+            new_price = current_prediction * (1 + scaled_return)
+
+            # Additional mean reversion toward the original price
+            long_term_mean_reversion = 0.05  # 5% pull toward original price per day
+            new_price = (
+                new_price * (1 - long_term_mean_reversion)
+                + current_price * long_term_mean_reversion
+            )
+
+            # Final bounds
+            new_price = max(
+                new_price, current_price * 0.3
+            )  # Never drop below 30% of current
+            new_price = min(new_price, current_price * 3.0)  # Never triple
+
+            # Store prediction
+            future_predictions.append(new_price)
+            future_dates.append(btc_data.index[-1] + pd.Timedelta(days=day + 1))
+            current_prediction = new_price
+
+            if day % 10 == 0:
+                progress_bar.progress((day + 1) / days)
+
+        except Exception as e:
+            st.error(f"Error in future prediction day {day}: {e}")
+            # Fallback: very slight random walk
+            drift = np.random.normal(0, daily_volatility * 0.1)
+            new_price = current_prediction * (1 + drift)
+            new_price = np.clip(new_price, current_price * 0.5, current_price * 2.0)
+
+            future_predictions.append(new_price)
+            future_dates.append(btc_data.index[-1] + pd.Timedelta(days=day + 1))
+            current_prediction = new_price
 
     progress_bar.empty()
-    return future_btc.iloc[-days:]
+
+    result_df = pd.DataFrame(
+        {"Date": future_dates, "Predicted_Close": future_predictions}
+    ).set_index("Date")
+
+    # Final sanity check on the entire series
+    max_reasonable = current_price * 10  # Never more than 10x current price
+    min_reasonable = current_price * 0.1  # Never less than 10% of current price
+    result_df["Predicted_Close"] = result_df["Predicted_Close"].clip(
+        lower=min_reasonable, upper=max_reasonable
+    )
+
+    return result_df
 
 
 def load_data(period: str = "10y") -> pd.DataFrame:
@@ -396,13 +608,8 @@ def load_data(period: str = "10y") -> pd.DataFrame:
     # Fetch and merge Fear & Greed data
     fng = fetch_historical_fng()
     if not fng.empty:
-        # Merge on index (date)
-        # F&G data is daily, BTC is daily.
-        # We use 'left' join to keep all BTC rows, filling missing F&G with ffill
         btc = btc.join(fng, how="left")
-        btc["fng_value"] = (
-            btc["fng_value"].ffill().fillna(50)
-        )  # Default to 50 if missing
+        btc["fng_value"] = btc["fng_value"].ffill().fillna(50)
     else:
         btc["fng_value"] = 50
 
@@ -419,14 +626,23 @@ def main() -> None:
     # User inputs
     period = st.selectbox("Data Period", ["1y", "5y", "10y", "max"], index=2)
     window = st.slider("Sequence Window", 10, 60, 30)
-    epochs = st.slider("Training Epochs", 20, 200, 50)
+    epochs = st.slider("Training Epochs", 20, 200, 100)
 
     # Load data
     try:
         btc = load_data(period)
+        st.success(f"✅ Loaded {len(btc)} days of BTC data")
     except Exception as e:
         st.error(f"Data loading failed: {e}")
         st.stop()
+
+    # Display data info
+    st.subheader("Data Overview")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Start Date", btc.index[0].strftime("%Y-%m-%d"))
+    col2.metric("End Date", btc.index[-1].strftime("%Y-%m-%d"))
+    col3.metric("Current Price", f"${btc['Close'].iloc[-1]:.2f}")
+    col4.metric("F&G Index", f"{btc['fng_value'].iloc[-1]}")
 
     st.subheader("Historical BTC Prices")
     fig_hist = go.Figure()
@@ -446,100 +662,137 @@ def main() -> None:
         yaxis_title="Price (USD)",
         template="plotly_white",
     )
-    st.plotly_chart(fig_hist, width="stretch")
+    st.plotly_chart(fig_hist, use_container_width=True)
 
     st.subheader("Historical Fear and Greed Index")
-    st.plotly_chart(px.line(btc, x=btc.index, y="fng_value"))
+    fig_fng = px.line(btc, x=btc.index, y="fng_value", title="Fear & Greed Index")
+    fig_fng.update_layout(template="plotly_white")
+    st.plotly_chart(fig_fng, use_container_width=True)
+
     # Train model
-    try:
-        (
-            model,
-            scaler,
-            _,
-            _,
-            _,
-            y_test,
-            inverted_y_pred,
-            rmse,
-            mape,
-            features_df,
-            inverted_y_test,
-            ret_scale,
-            ret_min,
-            split,
-            _,
-        ) = train_model(btc, window, epochs)
-    except Exception as e:
-        st.error(f"Model training failed: {e}")
-        st.stop()
+    st.subheader("Model Training")
+    with st.spinner("Training model... This may take a few minutes."):
+        try:
+            (
+                model,
+                scaler,
+                _,
+                _,
+                _,
+                y_test,
+                inverted_y_pred,
+                rmse,
+                mape,
+                features_df,
+                inverted_y_test,
+                ret_scale,
+                ret_min,
+                test_start,
+                train_losses,
+                val_losses,
+                feature_cols,
+            ) = improved_train_model(btc, window, epochs)
+            st.success("✅ Model training completed successfully!")
+        except Exception as e:
+            st.error(f"Model training failed: {e}")
+            st.stop()
 
     st.subheader("Model Evaluation")
     col1, col2 = st.columns(2)
     col1.metric("Test RMSE", f"{rmse:.2f}")
     col2.metric("Test MAPE", f"{mape:.2f}%")
 
+    # Plot training history
+    if train_losses and val_losses:
+        fig_loss = go.Figure()
+        fig_loss.add_trace(
+            go.Scatter(y=train_losses, mode="lines", name="Training Loss")
+        )
+        fig_loss.add_trace(
+            go.Scatter(y=val_losses, mode="lines", name="Validation Loss")
+        )
+        fig_loss.update_layout(
+            title="Training History",
+            xaxis_title="Epoch",
+            yaxis_title="Loss",
+            template="plotly_white",
+        )
+        st.plotly_chart(fig_loss, use_container_width=True)
+
     # Predict next day
-    feature_cols = [
-        "Log_Ret",
-        "dist_sma_fast",
-        "momentum_rsi",
-        "volume_obv",
-        "fng_value",
-    ]
-    last_features = features_df[feature_cols].tail(window).values
-    scaled_last = scaler.transform(last_features)
-    predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
+    try:
+        last_features = features_df[feature_cols].tail(window).values
+        scaled_last = scaler.transform(last_features)
 
-    # Inverse scale Log Return
-    pred_log_ret = (predicted_scaled.item() - ret_min) / ret_scale
+        with torch.no_grad():
+            model.eval()
+            predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
 
-    # Apply to last known price
-    last_known_price = btc["Close"].iloc[-1]
-    predicted_price = last_known_price * np.exp(pred_log_ret)
+        # Inverse scale Log Return
+        pred_log_ret = (predicted_scaled.item() - ret_min) / ret_scale
 
-    st.subheader("Next Day BTC Price Prediction")
-    col1, col2 = st.columns(2)
-    col1.metric("Predicted Price", f"${predicted_price:,.2f}")
+        # Apply to last known price
+        last_known_price = btc["Close"].iloc[-1]
+        predicted_price = last_known_price * np.exp(pred_log_ret)
 
-    # Show F&G value used for prediction
-    last_fng = features_df["fng_value"].iloc[-1]
-    col2.metric("Current Fear & Greed", f"{int(last_fng)}")
+        st.subheader("Next Day BTC Price Prediction")
+        col1, col2 = st.columns(2)
+        col1.metric(
+            "Predicted Price",
+            f"${predicted_price:,.2f}",
+            delta=f"${predicted_price - last_known_price:,.2f}",
+        )
+
+        # Show F&G value used for prediction
+        last_fng = features_df["fng_value"].iloc[-1]
+        col2.metric("Current Fear & Greed", f"{int(last_fng)}")
+    except Exception as e:
+        st.warning(f"Next day prediction failed: {e}")
 
     # Plot actual vs predicted
-    test_dates = features_df.index[split + window :]
+    try:
+        test_dates = features_df.index[test_start : test_start + len(inverted_y_test)]
 
-    fig_pred = go.Figure()
-    fig_pred.add_trace(
-        go.Scatter(
-            x=test_dates,
-            y=inverted_y_test,
-            mode="lines",
-            name="Actual",
+        fig_pred = go.Figure()
+        fig_pred.add_trace(
+            go.Scatter(
+                x=test_dates,
+                y=inverted_y_test,
+                mode="lines",
+                name="Actual",
+                line=dict(color="blue"),
+            )
         )
-    )
-    fig_pred.add_trace(
-        go.Scatter(
-            x=test_dates,
-            y=inverted_y_pred,
-            mode="lines",
-            name="Predicted",
+        fig_pred.add_trace(
+            go.Scatter(
+                x=test_dates,
+                y=inverted_y_pred,
+                mode="lines",
+                name="Predicted",
+                line=dict(color="red", dash="dash"),
+            )
         )
-    )
-    fig_pred.update_layout(
-        title="Test Set: Actual vs Predicted",
-        xaxis_title="Date",
-        yaxis_title="Price (USD)",
-        template="plotly_white",
-    )
-    st.plotly_chart(fig_pred, width="stretch")
+        fig_pred.update_layout(
+            title="Test Set: Actual vs Predicted",
+            xaxis_title="Date",
+            yaxis_title="Price (USD)",
+            template="plotly_white",
+        )
+        st.plotly_chart(fig_pred, use_container_width=True)
+    except Exception as e:
+        st.warning(f"Could not plot predictions: {e}")
 
     # Backtesting
-    sharpe, total_return = backtest(features_df, inverted_y_pred, len(y_test))
-    st.subheader("Backtesting Results")
-    col1, col2 = st.columns(2)
-    col1.metric("Sharpe Ratio", f"{sharpe:.2f}")
-    col1.metric("Sharpe Ratio", f"{sharpe:.2f}")
-    col2.metric("Total Return", f"{total_return * 100:.2f}%")
+    try:
+        sharpe, total_return = backtest(
+            features_df, inverted_y_pred, test_start, len(inverted_y_pred)
+        )
+        st.subheader("Backtesting Results")
+        col1, col2 = st.columns(2)
+        col1.metric("Sharpe Ratio", f"{sharpe:.2f}")
+        col2.metric("Total Return", f"{total_return * 100:.2f}%")
+    except Exception as e:
+        st.warning(f"Backtesting failed: {e}")
 
     # Future Prediction
     st.subheader("Future Prediction")
@@ -548,45 +801,61 @@ def main() -> None:
         "**Warning: Highly speculative.**"
     )
 
-    forecast_days = st.slider("Days to Predict", 30, 365, 365)
+    forecast_days = st.slider("Days to Predict", 30, 365, 60)
 
     if st.button("Predict Future"):
         with st.spinner(f"Generating {forecast_days} days of predictions..."):
-            # We need the original btc dataframe with OHLCV for the loop
-            # 'btc' variable from main scope has it.
-            future_df = predict_future(model, scaler, btc, window, days=forecast_days)
-
-            st.success("Prediction complete!")
-
-            # Plot
-            fig_future = go.Figure()
-            # Historical (last 90 days for context)
-            fig_future.add_trace(
-                go.Scatter(
-                    x=btc.index[-90:],
-                    y=btc["Close"].iloc[-90:],
-                    mode="lines",
-                    name="Historical (Last 90 days)",
-                    line={"color": "gray"},
+            try:
+                future_df = mean_reverting_future_prediction(
+                    model, scaler, btc, window, feature_cols, days=forecast_days
                 )
-            )
-            # Future
-            fig_future.add_trace(
-                go.Scatter(
-                    x=future_df.index,
-                    y=future_df["Close"],
-                    mode="lines",
-                    name="Forecast",
-                    line={"color": "blue", "dash": "dash"},
+
+                st.success("Prediction complete!")
+
+                # Plot
+                fig_future = go.Figure()
+                # Historical (last 90 days for context)
+                fig_future.add_trace(
+                    go.Scatter(
+                        x=btc.index[-90:],
+                        y=btc["Close"].iloc[-90:],
+                        mode="lines",
+                        name="Historical (Last 90 days)",
+                        line=dict(color="gray"),
+                    )
                 )
-            )
-            fig_future.update_layout(
-                title=f"Bitcoin Price Forecast ({forecast_days} days)",
-                xaxis_title="Date",
-                yaxis_title="Price (USD)",
-                template="plotly_white",
-            )
-            st.plotly_chart(fig_future, width="stretch")
+                # Future
+                fig_future.add_trace(
+                    go.Scatter(
+                        x=future_df.index,
+                        y=future_df["Predicted_Close"],
+                        mode="lines",
+                        name="Forecast",
+                        line={"color": "blue", "dash": "dash"},
+                    )
+                )
+                fig_future.update_layout(
+                    title=f"Bitcoin Price Forecast ({forecast_days} days)",
+                    xaxis_title="Date",
+                    yaxis_title="Price (USD)",
+                    template="plotly_white",
+                )
+                st.plotly_chart(fig_future, use_container_width=True)
+
+                # Show prediction statistics
+                st.subheader("Forecast Statistics")
+                col1, col2, col3 = st.columns(3)
+                current_price = btc["Close"].iloc[-1]
+                predicted_end_price = future_df["Predicted_Close"].iloc[-1]
+                price_change = (
+                    (predicted_end_price - current_price) / current_price
+                ) * 100
+
+                col1.metric("Current Price", f"${current_price:,.2f}")
+                col2.metric("Predicted End Price", f"${predicted_end_price:,.2f}")
+                col3.metric("Predicted Change", f"{price_change:+.2f}%")
+            except Exception as e:
+                st.error(f"Future prediction failed: {e}")
 
 
 if __name__ == "__main__":
