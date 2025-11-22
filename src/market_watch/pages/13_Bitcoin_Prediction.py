@@ -281,7 +281,7 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
 
 
 @st.cache_resource
-def improved_train_model(   # noqa: C901
+def improved_train_model(  # noqa: C901
     btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
 ) -> tuple[
     ImprovedLSTMModel,
