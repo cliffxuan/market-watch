@@ -8,6 +8,7 @@ import requests
 import streamlit as st
 import torch
 import yfinance as yf
+from loguru import logger
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 from torch import nn
@@ -168,13 +169,31 @@ def prepare_data_with_validation(
     )
 
 
-class ImprovedLSTMModel(nn.Module):
+def get_device() -> torch.device:
+    """
+    Automatically detect and use GPU if available.
+    """
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        logger.info(f"Using GPU: {torch.cuda.get_device_name(0)}")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = torch.device("mps")
+        logger.info("Using Apple Silicon GPU (MPS)")
+    else:
+        device = torch.device("cpu")
+        logger.info("Using CPU")
+
+    return device
+
+
+class BTCPredictor(nn.Module):
     def __init__(
         self,
         input_size: int = 8,
-        hidden_size: int = 100,
+        hidden_size: int = 128,
         num_layers: int = 2,
         dropout: float = 0.3,
+        bidirectional: bool = False,
     ):
         super().__init__()
         self.lstm = nn.LSTM(
@@ -183,29 +202,35 @@ class ImprovedLSTMModel(nn.Module):
             num_layers,
             batch_first=True,
             dropout=dropout if num_layers > 1 else 0,
-            bidirectional=False,
+            bidirectional=bidirectional,
         )
         self.dropout = nn.Dropout(dropout)
-        self.fc1 = nn.Linear(hidden_size, 50)
-        self.fc2 = nn.Linear(50, 25)
-        self.fc3 = nn.Linear(25, 1)
+        lstm_output_size = hidden_size * (2 if bidirectional else 1)
+        self.batch_norm = nn.BatchNorm1d(lstm_output_size)
+        self.fc1 = nn.Linear(lstm_output_size, 64)
+        self.fc2 = nn.Linear(64, 1)
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         batch_size = x.size(0)
-        h0 = torch.zeros(self.lstm.num_layers, batch_size, self.lstm.hidden_size).to(
-            x.device
-        )
-        c0 = torch.zeros(self.lstm.num_layers, batch_size, self.lstm.hidden_size).to(
-            x.device
-        )
+        num_directions = 2 if self.lstm.bidirectional else 1
+
+        h0 = torch.zeros(
+            self.lstm.num_layers * num_directions,
+            batch_size,
+            self.lstm.hidden_size,
+        ).to(x.device)
+        c0 = torch.zeros(
+            self.lstm.num_layers * num_directions,
+            batch_size,
+            self.lstm.hidden_size,
+        ).to(x.device)
 
         out, _ = self.lstm(x, (h0, c0))
         out = self.dropout(out[:, -1, :])
         out = self.relu(self.fc1(out))
         out = self.dropout(out)
         out = self.relu(self.fc2(out))
-        out = self.fc3(out)
         return out
 
 
@@ -218,6 +243,9 @@ def train_one_epoch(
 ) -> float:
     model.train()
     optimizer.zero_grad()
+    device = next(model.parameters()).device
+    x_train = x_train.to(device)
+    y_train = y_train.to(device)
     outputs = model(x_train)
     loss = criterion(outputs, y_train.unsqueeze(1))
     loss.backward()
@@ -234,6 +262,9 @@ def validate_one_epoch(
 ) -> float:
     model.eval()
     with torch.no_grad():
+        device = next(model.parameters()).device
+        x_val = x_val.to(device)
+        y_val = y_val.to(device)
         outputs = model(x_val)
         loss = criterion(outputs, y_val.unsqueeze(1))
     return loss.item()
@@ -286,11 +317,11 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
     return available_cols
 
 
-@st.cache_resource
-def improved_train_model(  # noqa: C901
+# @st.cache_resource
+def train_model(  # noqa: C901
     btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
 ) -> tuple[
-    ImprovedLSTMModel,
+    BTCPredictor,
     MinMaxScaler,
     torch.FloatTensor,
     torch.FloatTensor,
@@ -356,7 +387,7 @@ def improved_train_model(  # noqa: C901
         prepare_data_with_validation(features.astype(np.float32), window)
     )
 
-    model = ImprovedLSTMModel(input_size=len(available_cols))
+    model = BTCPredictor(input_size=len(available_cols)).to(get_device())
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
     criterion = nn.MSELoss()
 
@@ -408,7 +439,8 @@ def improved_train_model(  # noqa: C901
     # Evaluate on test set
     model.eval()
     with torch.no_grad():
-        y_pred_test = model(x_test).numpy().flatten()
+        device = next(model.parameters()).device
+        y_pred_test = model(x_test.to(device)).cpu().numpy().flatten()
 
     # Reconstruct prices
     ret_scale = scaler.scale_[0]
@@ -516,7 +548,7 @@ def backtest(
 
 
 def robust_future_prediction(
-    model: ImprovedLSTMModel,
+    model: BTCPredictor,
     scaler: MinMaxScaler,
     btc_data: pd.DataFrame,
     window: int,
@@ -541,9 +573,9 @@ def robust_future_prediction(
 
     # Start with the last window of data
     # We need to reconstruct the feature matrix for the last window
-    # logic similar to improved_train_model but just for the last window
+    # logic similar to train_model but just for the last window
     try:
-        # We'll reuse the logic from improved_train_model to get the last window's
+        # We'll reuse the logic from train_model to get the last window's
         # features. But since we don't have a clean way to call it, we'll approximate.
         # But since we don't have a clean way to call it, we'll approximate.
         # Ideally, we should have a 'get_features' function.
@@ -579,7 +611,11 @@ def robust_future_prediction(
             # Predict
             with torch.no_grad():
                 model.eval()
-                pred_scaled = model(torch.FloatTensor(scaled_features).unsqueeze(0))
+                device = next(model.parameters()).device
+                input_tensor = (
+                    torch.FloatTensor(scaled_features).unsqueeze(0).to(device)
+                )
+                pred_scaled = model(input_tensor)
 
             # Inverse scale
             # Log_Ret is always index 0 in our scaler logic?
@@ -749,7 +785,7 @@ def main() -> None:
                 train_losses,
                 val_losses,
                 feature_cols,
-            ) = improved_train_model(btc, window, epochs)
+            ) = train_model(btc, window, epochs)
             st.success("✅ Model training completed successfully!")
         except Exception as e:
             st.error(f"Model training failed: {e}")
@@ -784,7 +820,9 @@ def main() -> None:
 
         with torch.no_grad():
             model.eval()
-            predicted_scaled = model(torch.FloatTensor(scaled_last).unsqueeze(0))
+            device = next(model.parameters()).device
+            input_tensor = torch.FloatTensor(scaled_last).unsqueeze(0).to(device)
+            predicted_scaled = model(input_tensor)
 
         # Inverse scale Log Return
         pred_log_ret = (predicted_scaled.item() - ret_min) / ret_scale
