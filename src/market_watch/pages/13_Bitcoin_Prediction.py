@@ -1,3 +1,4 @@
+import random
 import warnings
 
 import numpy as np
@@ -14,6 +15,18 @@ from sklearn.preprocessing import MinMaxScaler
 from torch import nn
 
 warnings.filterwarnings("ignore")
+
+
+def set_seed(seed: int = 42) -> None:
+    """Set random seeds for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
@@ -169,21 +182,32 @@ def prepare_data_with_validation(
     )
 
 
-def get_device() -> torch.device:
+def get_device(device_preference: str = "Auto") -> torch.device:
     """
-    Automatically detect and use GPU if available.
+    Get device based on preference and availability.
     """
+    if device_preference in ["CPU", "CUDA", "MPS"]:
+        logger.info(f"Using {device_preference} (Forced)")
+        return torch.device(device_preference.lower())
     if torch.cuda.is_available():
-        device = torch.device("cuda")
         logger.info(f"Using GPU: {torch.cuda.get_device_name(0)}")
+        return torch.device("cuda")
     elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        device = torch.device("mps")
         logger.info("Using Apple Silicon GPU (MPS)")
+        return torch.device("mps")
     else:
-        device = torch.device("cpu")
         logger.info("Using CPU")
+        return torch.device("cpu")
 
-    return device
+
+def get_available_devices() -> list[str]:
+    """Get list of available compute devices."""
+    devices = ["Auto", "CPU"]
+    if torch.cuda.is_available():
+        devices.append("CUDA")
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        devices.append("MPS")
+    return devices
 
 
 class BTCPredictor(nn.Module):
@@ -319,7 +343,11 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
 
 # @st.cache_resource
 def train_model(  # noqa: C901
-    btc: pd.DataFrame, window: int = 30, epochs: int = 100, lr: float = 0.001
+    btc: pd.DataFrame,
+    window: int = 30,
+    epochs: int = 100,
+    lr: float = 0.001,
+    device_name: str = "Auto",
 ) -> tuple[
     BTCPredictor,
     MinMaxScaler,
@@ -387,13 +415,13 @@ def train_model(  # noqa: C901
         prepare_data_with_validation(features.astype(np.float32), window)
     )
 
-    model = BTCPredictor(input_size=len(available_cols)).to(get_device())
+    model = BTCPredictor(input_size=len(available_cols)).to(get_device(device_name))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
     criterion = nn.MSELoss()
 
     # Learning rate scheduler
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=10, factor=0.5
+        optimizer, mode="min", patience=10, factor=0.5
     )
 
     best_val_loss = float("inf")
@@ -718,9 +746,19 @@ def main() -> None:
     )
 
     # User inputs
-    period = st.selectbox("Data Period", ["1y", "5y", "10y", "max"], index=2)
-    window = st.slider("Sequence Window", 10, 60, 30)
-    epochs = st.slider("Training Epochs", 20, 200, 100)
+    with st.sidebar:
+        st.header("Configuration")
+        period = st.selectbox("Data Period", ["1y", "5y", "10y", "max"], index=2)
+        window = st.slider("Sequence Window", 10, 60, 30)
+        epochs = st.slider("Training Epochs", 20, 200, 100)
+        device_pref = st.selectbox(
+            "Compute Device",
+            get_available_devices(),
+            index=0,
+            help="Force CPU for reproducible results. MPS/CUDA is faster but may vary.",
+        )
+
+    set_seed(42)
 
     # Load data
     try:
@@ -765,31 +803,51 @@ def main() -> None:
 
     # Train model
     st.subheader("Model Training")
-    with st.spinner("Training model... This may take a few minutes."):
-        try:
-            (
-                model,
-                scaler,
-                _,
-                _,
-                _,
-                _,
-                inverted_y_pred,
-                rmse,
-                mape,
-                features_df,
-                inverted_y_test,
-                ret_scale,
-                ret_min,
-                test_start,
-                train_losses,
-                val_losses,
-                feature_cols,
-            ) = train_model(btc, window, epochs)
-            st.success("✅ Model training completed successfully!")
-        except Exception as e:
-            st.error(f"Model training failed: {e}")
-            st.stop()
+
+    # Check if we need to retrain
+    # We retrain if:
+    # 1. Model is not in session state
+    # 2. Parameters have changed
+    current_params = {
+        "period": period,
+        "window": window,
+        "epochs": epochs,
+        "device": device_pref,
+    }
+
+    if st.session_state.get("training_params") != current_params:
+        with st.spinner("Training model... This may take a few minutes."):
+            try:
+                results = train_model(btc, window, epochs, device_name=device_pref)
+                st.session_state["training_results"] = results
+                st.session_state["training_params"] = current_params
+                st.success("✅ Model training completed successfully!")
+            except Exception as e:
+                st.error(f"Model training failed: {e}")
+                st.stop()
+    else:
+        st.info("Using cached model from session state.")
+
+    # Unpack results from session state
+    (
+        model,
+        scaler,
+        _,
+        _,
+        _,
+        _,
+        inverted_y_pred,
+        rmse,
+        mape,
+        features_df,
+        inverted_y_test,
+        ret_scale,
+        ret_min,
+        test_start,
+        train_losses,
+        val_losses,
+        feature_cols,
+    ) = st.session_state["training_results"]
 
     st.subheader("Model Evaluation")
     col1, col2 = st.columns(2)
