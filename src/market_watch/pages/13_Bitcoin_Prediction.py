@@ -310,6 +310,7 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
         "Dist_EMA_20",
         "Volume_Ratio",
         "fng_value",
+        "Interest_Rate",
     ]
 
     # Ensure we have all columns
@@ -324,6 +325,12 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
 
     if "fng_value" not in available_cols and "fng_value" in btc_stationary.columns:
         available_cols.append("fng_value")
+
+    if (
+        "Interest_Rate" not in available_cols
+        and "Interest_Rate" in btc_stationary.columns
+    ):
+        available_cols.append("Interest_Rate")
 
     # Ensure we have at least 3 features
     min_features = 3
@@ -341,7 +348,6 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
     return available_cols
 
 
-# @st.cache_resource
 def train_model(  # noqa: C901
     btc: pd.DataFrame,
     window: int = 30,
@@ -735,6 +741,28 @@ def load_data(period: str = "10y") -> pd.DataFrame:
     else:
         btc["fng_value"] = 50
 
+    # Fetch Interest Rate (10 Year Treasury Yield) as proxy for Fed Rate
+    try:
+        tnx = yf.Ticker("^TNX").history(period=period)
+        if not tnx.empty:
+            if isinstance(tnx.index, pd.DatetimeIndex):
+                tnx.index = tnx.index.tz_localize(None)
+
+            # We only need the Close price, rename it
+            tnx = tnx[["Close"]].rename(columns={"Close": "Interest_Rate"})
+
+            # Join with BTC data
+            btc = btc.join(tnx, how="left")
+
+            # Forward fill missing values (weekends/holidays) and fill initial NaNs
+            btc["Interest_Rate"] = btc["Interest_Rate"].ffill().bfill()
+        else:
+            st.warning("Could not fetch Interest Rate data (^TNX). Using 0.")
+            btc["Interest_Rate"] = 0.0
+    except Exception as e:
+        st.warning(f"Error fetching Interest Rate data: {e}")
+        btc["Interest_Rate"] = 0.0
+
     return btc
 
 
@@ -800,6 +828,13 @@ def main() -> None:
     fig_fng = px.line(btc, x=btc.index, y="fng_value", title="Fear & Greed Index")
     fig_fng.update_layout(template="plotly_white")
     st.plotly_chart(fig_fng, use_container_width=True)
+
+    st.subheader("Historical Interest Rate (10Y Treasury Yield)")
+    fig_rate = px.line(
+        btc, x=btc.index, y="Interest_Rate", title="10-Year Treasury Yield (^TNX)"
+    )
+    fig_rate.update_layout(template="plotly_white", yaxis_title="Yield (%)")
+    st.plotly_chart(fig_rate, use_container_width=True)
 
     # Train model
     st.subheader("Model Training")
