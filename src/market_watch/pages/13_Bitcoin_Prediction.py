@@ -129,6 +129,9 @@ def create_stationary_features(df: pd.DataFrame) -> pd.DataFrame:
     if "Interest_Rate" in df.columns:
         df["Interest_Rate_Change"] = df["Interest_Rate"].diff()
 
+    if "Gold" in df.columns:
+        df["Gold_Return"] = np.log(df["Gold"] / df["Gold"].shift(1))
+
     # Drop first row (NaN from pct_change)
     return df.iloc[1:].copy()
 
@@ -319,6 +322,7 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
         "fng_value",
         "Interest_Rate_Change",
         "SPX500_Return",
+        "Gold_Return",
     ]
 
     # Ensure we have all columns
@@ -345,6 +349,9 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
         and "SPX500_Return" in btc_stationary.columns
     ):
         available_cols.append("SPX500_Return")
+
+    if "Gold_Return" not in available_cols and "Gold_Return" in btc_stationary.columns:
+        available_cols.append("Gold_Return")
 
     # Ensure we have at least 3 features
     min_features = 3
@@ -799,6 +806,28 @@ def load_data(period: str = "10y") -> pd.DataFrame:
         st.warning(f"Error fetching SPX500 data: {e}")
         btc["SPX500"] = 0.0
 
+    # Fetch Gold data
+    try:
+        gold = yf.Ticker("GC=F").history(period=period)
+        if not gold.empty:
+            if isinstance(gold.index, pd.DatetimeIndex):
+                gold.index = gold.index.tz_localize(None)
+
+            # We only need the Close price, rename it
+            gold = gold[["Close"]].rename(columns={"Close": "Gold"})
+
+            # Join with BTC data
+            btc = btc.join(gold, how="left")
+
+            # Forward fill missing values (weekends/holidays) and fill initial NaNs
+            btc["Gold"] = btc["Gold"].ffill().bfill()
+        else:
+            st.warning("Could not fetch Gold data (GC=F). Using 0.")
+            btc["Gold"] = 0.0
+    except Exception as e:
+        st.warning(f"Error fetching Gold data: {e}")
+        btc["Gold"] = 0.0
+
     return btc
 
 
@@ -877,6 +906,11 @@ def main() -> None:
     fig_spx = px.line(btc, x=btc.index, y="SPX500", title="S&P 500 (^GSPC)")
     fig_spx.update_layout(template="plotly_white", yaxis_title="Price (USD)")
     st.plotly_chart(fig_spx, use_container_width=True)
+
+    st.subheader("Historical Gold Price (GC=F)")
+    fig_gold = px.line(btc, x=btc.index, y="Gold", title="Gold Futures (GC=F)")
+    fig_gold.update_layout(template="plotly_white", yaxis_title="Price (USD)")
+    st.plotly_chart(fig_gold, use_container_width=True)
 
     # Train model
     st.subheader("Model Training")
