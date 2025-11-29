@@ -220,11 +220,12 @@ def get_device(device_preference: str = "Auto") -> torch.device:
 
 def get_available_devices() -> list[str]:
     """Get list of available compute devices."""
-    devices = ["Auto", "CPU"]
+    devices = []
     if torch.cuda.is_available():
         devices.append("CUDA")
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         devices.append("MPS")
+    devices.append("CPU")
     return devices
 
 
