@@ -1,3 +1,4 @@
+import os
 import random
 import warnings
 
@@ -27,6 +28,13 @@ def set_seed(seed: int = 42) -> None:
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
+
+    # Enforce deterministic algorithms where possible
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    torch.use_deterministic_algorithms(True, warn_only=True)
 
 
 def fetch_historical_fng(limit: int = 10000) -> pd.DataFrame:
