@@ -122,6 +122,13 @@ def create_stationary_features(df: pd.DataFrame) -> pd.DataFrame:
             0, np.nan
         )
 
+    # External factors stationarity
+    if "SPX500" in df.columns:
+        df["SPX500_Return"] = np.log(df["SPX500"] / df["SPX500"].shift(1))
+
+    if "Interest_Rate" in df.columns:
+        df["Interest_Rate_Change"] = df["Interest_Rate"].diff()
+
     # Drop first row (NaN from pct_change)
     return df.iloc[1:].copy()
 
@@ -254,7 +261,7 @@ class BTCPredictor(nn.Module):
         out = self.dropout(out[:, -1, :])
         out = self.relu(self.fc1(out))
         out = self.dropout(out)
-        out = self.relu(self.fc2(out))
+        out = self.fc2(out)
         return out
 
 
@@ -310,7 +317,8 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
         "Dist_EMA_20",
         "Volume_Ratio",
         "fng_value",
-        "Interest_Rate",
+        "Interest_Rate_Change",
+        "SPX500_Return",
     ]
 
     # Ensure we have all columns
@@ -327,10 +335,16 @@ def select_features(btc_stationary: pd.DataFrame) -> list[str]:
         available_cols.append("fng_value")
 
     if (
-        "Interest_Rate" not in available_cols
-        and "Interest_Rate" in btc_stationary.columns
+        "Interest_Rate_Change" not in available_cols
+        and "Interest_Rate_Change" in btc_stationary.columns
     ):
-        available_cols.append("Interest_Rate")
+        available_cols.append("Interest_Rate_Change")
+
+    if (
+        "SPX500_Return" not in available_cols
+        and "SPX500_Return" in btc_stationary.columns
+    ):
+        available_cols.append("SPX500_Return")
 
     # Ensure we have at least 3 features
     min_features = 3
@@ -763,6 +777,28 @@ def load_data(period: str = "10y") -> pd.DataFrame:
         st.warning(f"Error fetching Interest Rate data: {e}")
         btc["Interest_Rate"] = 0.0
 
+    # Fetch SPX500 data
+    try:
+        spx = yf.Ticker("^GSPC").history(period=period)
+        if not spx.empty:
+            if isinstance(spx.index, pd.DatetimeIndex):
+                spx.index = spx.index.tz_localize(None)
+
+            # We only need the Close price, rename it
+            spx = spx[["Close"]].rename(columns={"Close": "SPX500"})
+
+            # Join with BTC data
+            btc = btc.join(spx, how="left")
+
+            # Forward fill missing values (weekends/holidays) and fill initial NaNs
+            btc["SPX500"] = btc["SPX500"].ffill().bfill()
+        else:
+            st.warning("Could not fetch SPX500 data (^GSPC). Using 0.")
+            btc["SPX500"] = 0.0
+    except Exception as e:
+        st.warning(f"Error fetching SPX500 data: {e}")
+        btc["SPX500"] = 0.0
+
     return btc
 
 
@@ -785,6 +821,7 @@ def main() -> None:
             index=0,
             help="Force CPU for reproducible results. MPS/CUDA is faster but may vary.",
         )
+        retrain_button = st.button("Retrain Model")
 
     set_seed(42)
 
@@ -850,7 +887,7 @@ def main() -> None:
         "device": device_pref,
     }
 
-    if st.session_state.get("training_params") != current_params:
+    if st.session_state.get("training_params") != current_params or retrain_button:
         with st.spinner("Training model... This may take a few minutes."):
             try:
                 results = train_model(btc, window, epochs, device_name=device_pref)
