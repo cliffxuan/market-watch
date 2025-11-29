@@ -873,6 +873,11 @@ def main() -> None:
     fig_rate.update_layout(template="plotly_white", yaxis_title="Yield (%)")
     st.plotly_chart(fig_rate, use_container_width=True)
 
+    st.subheader("Historical S&P 500 (SPX)")
+    fig_spx = px.line(btc, x=btc.index, y="SPX500", title="S&P 500 (^GSPC)")
+    fig_spx.update_layout(template="plotly_white", yaxis_title="Price (USD)")
+    st.plotly_chart(fig_spx, use_container_width=True)
+
     # Train model
     st.subheader("Model Training")
 
