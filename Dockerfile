@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 RUN apt update -y
 RUN apt install -y gcc g++ cmake libopenblas-dev git
 COPY ./ /app
